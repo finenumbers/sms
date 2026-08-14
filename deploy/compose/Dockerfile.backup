@@ -1,0 +1,4 @@
+FROM postgres:16-alpine
+COPY deploy/compose/backup.sh /backup.sh
+RUN chmod +x /backup.sh
+ENTRYPOINT ["/backup.sh"]

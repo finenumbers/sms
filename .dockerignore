@@ -1,0 +1,8 @@
+# Byte-compiled / local env
+.env
+**/.env
+*.local
+node_modules
+web/**/dist
+.git
+deploy/compose/.env

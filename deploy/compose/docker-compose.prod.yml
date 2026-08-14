@@ -1,0 +1,26 @@
+# Production overlay: do not publish Postgres, Redis, or the Go API.
+# Public TLS and Host routing are Nginx Proxy Manager (not this compose file).
+#
+#   docker compose -f deploy/compose/docker-compose.yml \
+#     -f deploy/compose/docker-compose.prod.yml --env-file deploy/compose/.env up -d --build
+#
+# Portainer: use docker-compose.portainer.yml instead of this overlay.
+
+services:
+  postgres:
+    ports: !reset []
+    restart: unless-stopped
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+
+  api:
+    ports: !reset []
+    restart: unless-stopped
+
+  worker:
+    restart: unless-stopped
+
+  backup:
+    restart: unless-stopped

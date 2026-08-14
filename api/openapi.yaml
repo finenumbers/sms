@@ -1,0 +1,2478 @@
+openapi: 3.0.3
+info:
+  title: Finenumbers SMS Service
+  version: 0.1.0
+  description: |
+    Three surfaces, one process:
+    - `/admin/v1` cookie admin (host admin.{domain})
+    - `/client/v1` cookie client (host client.{domain})
+    - `/v1` API keys (host api.{domain})
+    - `/internal/runexis` provider callbacks
+    - `/internal/smsc/callback` SMSC HLR/Ping callbacks
+servers:
+  - url: /
+paths:
+  /healthz:
+    get:
+      tags: [ops]
+      operationId: healthz
+      responses:
+        "200":
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+  /readyz:
+    get:
+      tags: [ops]
+      operationId: readyz
+      responses:
+        "200":
+          description: Dependencies are reachable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Health"
+        "503":
+          description: Not ready
+  /admin/v1/health:
+    get:
+      tags: [admin]
+      operationId: adminHealth
+      responses:
+        "200":
+          description: Admin surface placeholder
+  /client/v1/health:
+    get:
+      tags: [client]
+      operationId: clientHealth
+      responses:
+        "200":
+          description: Client surface placeholder
+  /admin/v1/auth/login:
+    post:
+      tags: [admin]
+      operationId: adminLogin
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Session cookie set
+        "401":
+          description: Invalid credentials
+        "429":
+          description: Rate limited
+  /admin/v1/auth/logout:
+    post:
+      tags: [admin]
+      operationId: adminLogout
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "204":
+          description: Cookie cleared
+  /admin/v1/auth/me:
+    get:
+      tags: [admin]
+      operationId: adminMe
+      security: [{adminCookie: []}]
+      responses:
+        "200":
+          description: Current admin
+  /admin/v1/clients:
+    get:
+      tags: [admin]
+      operationId: adminListClients
+      security: [{adminCookie: []}]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, suspended]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Client list
+    post:
+      tags: [admin]
+      operationId: adminCreateClient
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateClientRequest"
+      responses:
+        "201":
+          description: Client and owner created
+  /admin/v1/clients/{clientID}:
+    get:
+      tags: [admin]
+      operationId: adminGetClient
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/ClientID"
+      responses:
+        "200":
+          description: Client with users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientDetail"
+        "404":
+          description: Not found
+    patch:
+      tags: [admin]
+      operationId: adminPatchClient
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchClientRequest"
+      responses:
+        "200":
+          description: Updated client
+    delete:
+      tags: [admin]
+      operationId: adminDeleteClient
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      responses:
+        "204":
+          description: Soft-deleted; numbers returned to inventory
+  /admin/v1/clients/{clientID}/suspend:
+    post:
+      tags: [admin]
+      operationId: adminSuspendClient
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      responses:
+        "200":
+          description: Suspended
+        "409":
+          description: Wrong status
+  /admin/v1/clients/{clientID}/activate:
+    post:
+      tags: [admin]
+      operationId: adminActivateClient
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      responses:
+        "200":
+          description: Activated
+  /admin/v1/clients/{clientID}/billing:
+    get:
+      tags: [admin]
+      operationId: adminGetClientBilling
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/ClientID"
+      responses:
+        "200":
+          description: Wallet, ledger, assigned tariffs
+  /admin/v1/clients/{clientID}/tariff:
+    post:
+      tags: [admin]
+      operationId: adminAssignClientTariff
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [product, tariff_plan_id]
+              properties:
+                product:
+                  type: string
+                  enum: [sms_domestic, sms_international, hlr, silent_sms]
+                tariff_plan_id:
+                  type: string
+                  format: uuid
+                price_override:
+                  type: string
+      responses:
+        "200":
+          description: Assigned
+        "400":
+          description: Invalid product or plan
+  /admin/v1/clients/{clientID}/tariff/{product}:
+    delete:
+      tags: [admin]
+      operationId: adminUnassignClientTariff
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+        - name: product
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [sms_domestic, sms_international, hlr, silent_sms]
+      responses:
+        "200":
+          description: Assignment removed; client falls back to no sell price for the product
+        "404":
+          description: No assignment for this product
+  /admin/v1/clients/{clientID}/owner/password:
+    post:
+      tags: [admin]
+      operationId: adminResetOwnerPassword
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "204":
+          description: Password updated
+  /admin/v1/clients/{clientID}/api-keys:
+    get:
+      tags: [admin]
+      operationId: adminListAPIKeys
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/ClientID"
+      responses:
+        "200":
+          description: API keys (no secrets)
+        "404":
+          description: Client not found
+    post:
+      tags: [admin]
+      operationId: adminCreateAPIKey
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAPIKeyRequest"
+      responses:
+        "201":
+          description: Key created; token shown once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIKeyCreated"
+        "400":
+          description: Validation
+        "404":
+          description: Client not found
+  /admin/v1/clients/{clientID}/api-keys/{keyID}/revoke:
+    post:
+      tags: [admin]
+      operationId: adminRevokeAPIKey
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+        - $ref: "#/components/parameters/KeyID"
+      responses:
+        "200":
+          description: Revoked
+        "404":
+          description: Not found
+        "409":
+          description: Already revoked
+  /admin/v1/numbers:
+    get:
+      tags: [admin]
+      operationId: adminListNumbers
+      security: [{adminCookie: []}]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [inventory, assigned, disabled]
+        - name: client_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: DEF inventory
+  /admin/v1/numbers/upload:
+    post:
+      tags: [admin]
+      operationId: adminUploadNumbers
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Import report (UTF-8 or Windows-1251)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NumberUploadReport"
+  /admin/v1/numbers/sync:
+    post:
+      tags: [admin]
+      operationId: adminSyncNumbers
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: DIDAPI inventory sync report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NumberSyncReport"
+        "409":
+          description: Runexis not configured, or a sync is already in progress
+        "502":
+          description: Runexis request failed
+  /admin/v1/numbers/{numberID}:
+    get:
+      tags: [admin]
+      operationId: adminGetNumber
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/NumberID"
+      responses:
+        "200":
+          description: DEF number
+        "404":
+          description: Not found
+    patch:
+      tags: [admin]
+      operationId: adminPatchNumber
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/NumberID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchNumberRequest"
+      responses:
+        "200":
+          description: Updated number
+        "409":
+          description: Assigned numbers must be unassigned before disable
+  /admin/v1/numbers/{numberID}/assign:
+    post:
+      tags: [admin]
+      operationId: adminAssignNumber
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/NumberID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssignNumberRequest"
+      responses:
+        "200":
+          description: Assigned; directions job enqueued
+        "409":
+          description: Not assignable
+  /admin/v1/numbers/{numberID}/unassign:
+    post:
+      tags: [admin]
+      operationId: adminUnassignNumber
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/NumberID"
+      responses:
+        "200":
+          description: Returned to inventory
+        "409":
+          description: Not assigned
+  /admin/v1/billing/overview:
+    get:
+      tags: [admin]
+      operationId: adminBillingOverview
+      security: [{adminCookie: []}]
+      responses:
+        "200":
+          description: Platform SMS and wallet totals
+  /admin/v1/tariffs:
+    get:
+      tags: [admin]
+      operationId: adminListTariffs
+      security: [{adminCookie: []}]
+      responses:
+        "200":
+          description: Tariff catalog
+    post:
+      tags: [admin]
+      operationId: adminCreateTariff
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "201":
+          description: Created plan
+  /admin/v1/settings:
+    get:
+      tags: [admin]
+      operationId: adminGetSettings
+      security: [{adminCookie: []}]
+      responses:
+        "200":
+          description: System settings (no secrets)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemSettings"
+    patch:
+      tags: [admin]
+      operationId: adminPatchSettings
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchSettingsRequest"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemSettings"
+  /admin/v1/settings/runexis/test:
+    post:
+      tags: [admin]
+      operationId: adminTestRunexis
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: Login + /me succeeded
+        "409":
+          description: Credentials missing or cannot be decrypted
+        "502":
+          description: DIDAPI rejected the request
+  /admin/v1/settings/runexis/callbacks:
+    post:
+      tags: [admin]
+      operationId: adminRegisterCallbacks
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ingress_token]
+              properties:
+                ingress_token:
+                  type: string
+      responses:
+        "200":
+          description: Global dlr-url and hook-url registered
+        "400":
+          description: Token does not match stored hash
+        "409":
+          description: callback_base_url is not set
+  /admin/v1/callbacks:
+    get:
+      tags: [admin]
+      operationId: adminListCallbacks
+      security: [{adminCookie: []}]
+      parameters:
+        - name: kind
+          in: query
+          schema:
+            type: string
+            enum: [dlr, mo]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Captured DLR/MO events (no token in path)
+  /admin/v1/callbacks/{callbackID}:
+    get:
+      tags: [admin]
+      operationId: adminGetCallback
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CallbackID"
+      responses:
+        "200":
+          description: Raw captured callback for fixture work
+        "404":
+          description: Not found
+  /admin/v1/logs:
+    get:
+      tags: [admin]
+      operationId: adminListLogs
+      security: [{adminCookie: []}]
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+          description: RFC3339 UTC. Default now-1h. Max span with to is 24h.
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [http, didapi, queue, ingress, audit]
+        - name: level
+          in: query
+          schema:
+            type: string
+            enum: [info, warn, error]
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: ILIKE on summary, action, error (not detail)
+        - name: client_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: request_id
+          in: query
+          schema:
+            type: string
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Operational events without detail JSON
+  /admin/v1/logs/{logID}:
+    get:
+      tags: [admin]
+      operationId: adminGetLog
+      security: [{adminCookie: []}]
+      parameters:
+        - name: logID
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Event including redacted detail
+        "404":
+          description: Not found
+  /client/v1/auth/login:
+    post:
+      tags: [client]
+      operationId: clientLogin
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Session cookie set
+  /client/v1/auth/logout:
+    post:
+      tags: [client]
+      operationId: clientLogout
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "204":
+          description: Cookie cleared
+  /client/v1/auth/me:
+    get:
+      tags: [client]
+      operationId: clientMe
+      security: [{clientCookie: []}]
+      responses:
+        "200":
+          description: Current client user
+  /client/v1/messages:
+    post:
+      tags: [client]
+      operationId: clientSendMessage
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "202":
+          description: Queued; poll GET /client/v1/messages/{messageID}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmsMessage"
+        "400":
+          description: Validation
+        "403":
+          description: From not assigned or international disabled
+        "429":
+          description: Rate limited
+    get:
+      tags: [client]
+      operationId: clientListMessages
+      security: [{clientCookie: []}]
+      parameters:
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [outbound, inbound]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped messages
+  /client/v1/messages/{messageID}:
+    get:
+      tags: [client]
+      operationId: clientGetMessage
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/MessageID"
+      responses:
+        "200":
+          description: Message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmsMessage"
+        "404":
+          description: Not found
+  /client/v1/campaigns:
+    get:
+      tags: [client]
+      operationId: clientListCampaigns
+      security: [{clientCookie: []}]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, queued, running, completed, failed, cancelled]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped campaigns
+    post:
+      tags: [client]
+      operationId: clientCreateCampaign
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCampaignRequest"
+      responses:
+        "201":
+          description: Draft created
+        "403":
+          description: From not assigned
+  /client/v1/campaigns/{campaignID}:
+    get:
+      tags: [client]
+      operationId: clientGetCampaign
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Campaign with recipient stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmsCampaign"
+        "404":
+          description: Not found
+    patch:
+      tags: [client]
+      operationId: clientPatchCampaign
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/CampaignID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchCampaignRequest"
+      responses:
+        "200":
+          description: Updated draft
+        "409":
+          description: Frozen after start
+    delete:
+      tags: [client]
+      operationId: clientDeleteCampaign
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "204":
+          description: Draft deleted
+        "409":
+          description: Not a draft
+  /client/v1/campaigns/{campaignID}/recipients:
+    get:
+      tags: [client]
+      operationId: clientListCampaignRecipients
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Recipients page
+    post:
+      tags: [client]
+      operationId: clientAddCampaignRecipients
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/CampaignID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipients]
+              properties:
+                recipients:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 10000
+      responses:
+        "200":
+          description: Added with duplicate/invalid report
+        "409":
+          description: Frozen after start
+  /client/v1/campaigns/{campaignID}/recipients/upload:
+    post:
+      tags: [client]
+      operationId: clientUploadCampaignRecipients
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/CampaignID"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: CSV imported (UTF-8 or Windows-1251)
+  /client/v1/campaigns/{campaignID}/start:
+    post:
+      tags: [client]
+      operationId: clientStartCampaign
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "202":
+          description: Queued; worker fans out to send_jobs
+        "409":
+          description: Empty, frozen, or wrong status
+        "429":
+          description: Another start in flight for this client
+  /client/v1/campaigns/{campaignID}/cancel:
+    post:
+      tags: [client]
+      operationId: clientCancelCampaign
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Cancelled; pending recipients skipped, in-flight jobs finish
+        "409":
+          description: Not queued or running
+  /client/v1/billing/balance:
+    get:
+      tags: [client]
+      operationId: clientBalance
+      security: [{clientCookie: []}]
+      responses:
+        "200":
+          description: Wallet available and held
+  /client/v1/billing/estimate:
+    post:
+      tags: [client]
+      operationId: clientEstimate
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: PDU count and optional price
+  /client/v1/billing/stats:
+    get:
+      tags: [client]
+      operationId: clientBillingStats
+      security: [{clientCookie: []}]
+      responses:
+        "200":
+          description: Spend plus sms counters and lookups by hlr/ping
+  /client/v1/lookups/estimate:
+    post:
+      tags: [client]
+      operationId: clientLookupEstimate
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupEstimateRequest"
+      responses:
+        "200":
+          description: Sell-price estimate; no HOLD
+        "402":
+          description: Not used on estimate
+        "403":
+          description: lookup_disabled or client_suspended
+        "409":
+          description: tariff_not_configured
+  /client/v1/lookups/checks:
+    post:
+      tags: [client]
+      operationId: clientLookupCreateCheck
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupCheckRequest"
+      responses:
+        "202":
+          description: Job+item+HOLD created; poll GET /client/v1/lookups/jobs/{jobID}
+        "402":
+          description: insufficient_funds
+  /client/v1/lookups/jobs:
+    get:
+      tags: [client]
+      operationId: clientLookupListJobs
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/LookupStatus"
+        - $ref: "#/components/parameters/LookupCheckType"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped lookup jobs
+    post:
+      tags: [client]
+      operationId: clientLookupCreateJob
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupJobRequest"
+      responses:
+        "202":
+          description: Job+items+HOLD created
+  /client/v1/lookups/jobs/{jobID}:
+    get:
+      tags: [client]
+      operationId: clientLookupGetJob
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job
+        "404":
+          description: Not found
+  /client/v1/lookups/jobs/{jobID}/items:
+    get:
+      tags: [client]
+      operationId: clientLookupListItems
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Job items
+  /client/v1/lookups/jobs/{jobID}/export:
+    get:
+      tags: [client]
+      operationId: clientLookupExportJob
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: XLSX, RU columns, no prices, max 50000 rows
+  /client/v1/lookups/csv-previews:
+    post:
+      tags: [client]
+      operationId: clientLookupCreateCSVPreview
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [type, file]
+              properties:
+                type:
+                  type: string
+                  enum: [hlr, ping]
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: Preview ready; TTL 30m; no HOLD
+  /client/v1/lookups/csv-previews/{previewID}:
+    get:
+      tags: [client]
+      operationId: clientLookupGetCSVPreview
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/PreviewID"
+      responses:
+        "200":
+          description: Preview
+        "404":
+          description: Missing or expired
+    delete:
+      tags: [client]
+      operationId: clientLookupDeleteCSVPreview
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/PreviewID"
+      responses:
+        "204":
+          description: Deleted
+  /client/v1/lookups/csv-previews/{previewID}/estimate:
+    post:
+      tags: [client]
+      operationId: clientLookupEstimateCSVPreview
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/PreviewID"
+      responses:
+        "200":
+          description: Estimate from parsed phones
+  /client/v1/lookups/csv-previews/{previewID}/submit:
+    post:
+      tags: [client]
+      operationId: clientLookupSubmitCSVPreview
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/PreviewID"
+      responses:
+        "202":
+          description: Only place cabinet CSV creates Job+HOLD
+  /client/v1/webhooks:
+    get:
+      tags: [client]
+      operationId: clientListWebhooks
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Endpoints; events [] = all
+    post:
+      tags: [client]
+      operationId: clientCreateWebhook
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        "201":
+          description: Secret shown once
+  /client/v1/webhooks/deliveries:
+    get:
+      tags: [client]
+      operationId: clientListWebhookDeliveries
+      security: [{clientCookie: []}]
+      parameters:
+        - name: endpoint_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, delivered, failed, dead]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Deliveries
+  /client/v1/webhooks/{webhookID}:
+    get:
+      tags: [client]
+      operationId: clientGetWebhook
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/WebhookID"
+      responses:
+        "200":
+          description: Endpoint
+    patch:
+      tags: [client]
+      operationId: clientPatchWebhook
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/WebhookID"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchWebhookRequest"
+      responses:
+        "200":
+          description: Updated; enabling resets consecutive_failures
+    delete:
+      tags: [client]
+      operationId: clientDeleteWebhook
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/WebhookID"
+      responses:
+        "204":
+          description: Deleted
+  /client/v1/webhooks/{webhookID}/rotate-secret:
+    post:
+      tags: [client]
+      operationId: clientRotateWebhookSecret
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/WebhookID"
+      responses:
+        "200":
+          description: New secret shown once
+  /client/v1/webhooks/{webhookID}/deliveries:
+    get:
+      tags: [client]
+      operationId: clientListWebhookEndpointDeliveries
+      security: [{clientCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/WebhookID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Deliveries for one endpoint
+  /v1/balance:
+    get:
+      tags: [public]
+      operationId: publicBalance
+      security: [{apiKey: []}]
+      responses:
+        "200":
+          description: Wallet; scope sms:read
+        "402":
+          description: Not used on GET
+  /v1/usage:
+    get:
+      tags: [public]
+      operationId: publicUsage
+      security: [{apiKey: [sms:read]}]
+      responses:
+        "200":
+          description: Spend plus sms counters and lookups by hlr/ping
+  /client/v1/api-keys:
+    get:
+      tags: [client]
+      operationId: clientListAPIKeys
+      security: [{clientCookie: []}]
+      responses:
+        "200":
+          description: Read-only prefix, status, last_used
+  /client/v1/numbers:
+    get:
+      tags: [client]
+      operationId: clientListNumbers
+      security: [{clientCookie: []}]
+      responses:
+        "200":
+          description: Currently assigned DEF numbers
+  /v1/health:
+    get:
+      tags: [public]
+      operationId: publicHealth
+      responses:
+        "200":
+          description: Public API surface
+  /v1/messages:
+    post:
+      tags: [public]
+      operationId: publicSendMessage
+      security: [{apiKey: [sms:send]}]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendMessageRequest"
+      responses:
+        "202":
+          description: Queued; poll GET /v1/messages/{messageID}
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmsMessage"
+        "400":
+          description: Validation
+        "401":
+          description: Missing or invalid API key
+        "403":
+          description: Scope, CIDR, revoked, or from not assigned
+        "409":
+          description: Idempotency-Key conflict
+        "429":
+          description: Rate limited
+    get:
+      tags: [public]
+      operationId: publicListMessages
+      security: [{apiKey: [sms:read]}]
+      parameters:
+        - name: direction
+          in: query
+          schema:
+            type: string
+            enum: [outbound, inbound]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped messages
+  /v1/messages/{messageID}:
+    get:
+      tags: [public]
+      operationId: publicGetMessage
+      security: [{apiKey: [sms:read]}]
+      parameters:
+        - $ref: "#/components/parameters/MessageID"
+      responses:
+        "200":
+          description: Message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmsMessage"
+        "404":
+          description: Not found
+  /v1/campaigns:
+    get:
+      tags: [public]
+      operationId: publicListCampaigns
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, queued, running, completed, failed, cancelled]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped campaigns
+    post:
+      tags: [public]
+      operationId: publicCreateCampaign
+      security: [{apiKey: [campaigns:write]}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCampaignRequest"
+      responses:
+        "201":
+          description: Draft created
+        "403":
+          description: From not assigned
+  /v1/campaigns/{campaignID}:
+    get:
+      tags: [public]
+      operationId: publicGetCampaign
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Campaign with recipient stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmsCampaign"
+        "404":
+          description: Not found
+    patch:
+      tags: [public]
+      operationId: publicPatchCampaign
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchCampaignRequest"
+      responses:
+        "200":
+          description: Updated draft
+        "409":
+          description: Frozen after start
+    delete:
+      tags: [public]
+      operationId: publicDeleteCampaign
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "204":
+          description: Draft deleted
+        "409":
+          description: Not a draft
+  /v1/campaigns/{campaignID}/recipients:
+    get:
+      tags: [public]
+      operationId: publicListCampaignRecipients
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Recipients page
+    post:
+      tags: [public]
+      operationId: publicAddCampaignRecipients
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recipients]
+              properties:
+                recipients:
+                  type: array
+                  items:
+                    type: string
+                  maxItems: 10000
+      responses:
+        "200":
+          description: Added with duplicate/invalid report
+        "409":
+          description: Frozen after start
+  /v1/campaigns/{campaignID}/recipients/upload:
+    post:
+      tags: [public]
+      operationId: publicUploadCampaignRecipients
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: CSV imported (UTF-8 or Windows-1251)
+  /v1/campaigns/{campaignID}/start:
+    post:
+      tags: [public]
+      operationId: publicStartCampaign
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "202":
+          description: Queued; worker fans out to send_jobs
+        "409":
+          description: Empty, frozen, or wrong status
+        "429":
+          description: Another start in flight for this client
+  /v1/campaigns/{campaignID}/cancel:
+    post:
+      tags: [public]
+      operationId: publicCancelCampaign
+      security: [{apiKey: [campaigns:write]}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Cancelled; pending recipients skipped, in-flight jobs finish
+        "409":
+          description: Not queued or running
+  /v1/checks:
+    post:
+      tags: [public]
+      operationId: publicCreateCheck
+      security: [{apiKey: [lookup:write]}]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupCheckRequest"
+      responses:
+        "202":
+          description: Async only; poll GET /v1/checks/{checkID} or /v1/jobs/{jobID}
+        "402":
+          description: insufficient_funds
+        "403":
+          description: lookup_disabled, client_suspended, or missing scope
+    get:
+      tags: [public]
+      operationId: publicListChecks
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/LookupItemStatus"
+        - $ref: "#/components/parameters/LookupCheckType"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped check items
+  /v1/checks/{checkID}:
+    get:
+      tags: [public]
+      operationId: publicGetCheck
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/CheckID"
+      responses:
+        "200":
+          description: Item UUID first, then job UUID
+        "404":
+          description: Not found or other client
+  /v1/jobs:
+    post:
+      tags: [public]
+      operationId: publicCreateLookupJob
+      security: [{apiKey: [lookup:write]}]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupJobRequest"
+      responses:
+        "202":
+          description: Job+items+HOLD
+    get:
+      tags: [public]
+      operationId: publicListLookupJobs
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/LookupStatus"
+        - $ref: "#/components/parameters/LookupCheckType"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Tenant-scoped jobs
+  /v1/jobs/csv:
+    post:
+      tags: [public]
+      operationId: publicCreateLookupJobCSV
+      security: [{apiKey: [lookup:write]}]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [hlr, ping]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                type:
+                  type: string
+                  enum: [hlr, ping]
+                file:
+                  type: string
+                  format: binary
+          text/csv:
+            schema:
+              type: string
+      responses:
+        "202":
+          description: Empty job shell, no HOLD; worker parses then HOLDs
+  /v1/jobs/{jobID}:
+    get:
+      tags: [public]
+      operationId: publicGetLookupJob
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job
+        "404":
+          description: Not found
+  /v1/jobs/{jobID}/items:
+    get:
+      tags: [public]
+      operationId: publicListLookupJobItems
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Job items
+  /v1/webhooks:
+    get:
+      tags: [public]
+      operationId: publicListWebhooks
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Read-only endpoints; events [] = all
+  /v1/webhooks/deliveries:
+    get:
+      tags: [public]
+      operationId: publicListWebhookDeliveries
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - name: endpoint_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, delivered, failed, dead]
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Delivery attempts without payload
+  /v1/webhooks/{webhookID}:
+    get:
+      tags: [public]
+      operationId: publicGetWebhook
+      security: [{apiKey: [lookup:read]}]
+      parameters:
+        - $ref: "#/components/parameters/WebhookID"
+      responses:
+        "200":
+          description: Endpoint; secret never returned
+  /admin/v1/lookups/jobs:
+    get:
+      tags: [admin]
+      operationId: adminLookupListJobs
+      security: [{adminCookie: []}]
+      parameters:
+        - name: client_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/LookupStatus"
+        - $ref: "#/components/parameters/LookupCheckType"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Cross-tenant jobs
+  /admin/v1/lookups/jobs/{jobID}:
+    get:
+      tags: [admin]
+      operationId: adminLookupGetJob
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: Job
+  /admin/v1/lookups/jobs/{jobID}/items:
+    get:
+      tags: [admin]
+      operationId: adminLookupListItems
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Items
+  /admin/v1/lookups/jobs/{jobID}/export:
+    get:
+      tags: [admin]
+      operationId: adminLookupExportJob
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: XLSX
+  /admin/v1/lookups/jobs/{jobID}/finalize:
+    post:
+      tags: [admin]
+      operationId: adminLookupFinalizeJob
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/JobID"
+      responses:
+        "200":
+          description: No-op if any item is non-terminal
+  /admin/v1/lookups/monitoring:
+    get:
+      tags: [admin]
+      operationId: adminLookupMonitoring
+      security: [{adminCookie: []}]
+      responses:
+        "200":
+          description: Adapter health, 24h counts, recent raw
+  /admin/v1/provider/smsc/estimate-cost:
+    post:
+      tags: [admin]
+      operationId: adminSMSCEstimateCost
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LookupCheckRequest"
+      responses:
+        "200":
+          description: send.php cost=1; never submits
+        "409":
+          description: not_configured
+  /admin/v1/provider/smsc/balance:
+    get:
+      tags: [admin]
+      operationId: adminSMSCBalance
+      security: [{adminCookie: []}]
+      responses:
+        "200":
+          description: Provider balance
+  /admin/v1/provider/smsc/connectivity-test:
+    post:
+      tags: [admin]
+      operationId: adminSMSCConnectivityTest
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+      responses:
+        "200":
+          description: balance.php plus local signature; never submits
+        "409":
+          description: Adapter, balance, or signature failed
+  /internal/smsc/callback:
+    get:
+      tags: [ingress]
+      operationId: smscCallbackGet
+      responses:
+        "200":
+          description: Persist raw; applied may be false
+        "401":
+          description: Missing or invalid signature
+    post:
+      tags: [ingress]
+      operationId: smscCallbackPost
+      responses:
+        "200":
+          description: Persist raw; applied may be false
+        "401":
+          description: Missing or invalid signature
+  /internal/runexis/{kind}/{token}:
+    parameters:
+      - name: kind
+        in: path
+        required: true
+        schema:
+          type: string
+          enum: [dlr, mo]
+      - name: token
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [ingress]
+      operationId: ingressCaptureGet
+      description: Persist query as payload, then 200. Wrong token → 404.
+      responses:
+        "200":
+          description: Stored (or duplicate)
+        "404":
+          description: Unknown kind or token
+    post:
+      tags: [ingress]
+      operationId: ingressCapturePost
+      description: Persist raw body, then 200. Wrong token → 404.
+      responses:
+        "200":
+          description: Stored (or duplicate)
+        "404":
+          description: Unknown kind or token
+    put:
+      tags: [ingress]
+      operationId: ingressCapturePut
+      description: Persist raw body, then 200. Wrong token → 404.
+      responses:
+        "200":
+          description: Stored (or duplicate)
+        "404":
+          description: Unknown kind or token
+components:
+  parameters:
+    CSRF:
+      name: X-Requested-With
+      in: header
+      required: true
+      schema:
+        type: string
+        example: XMLHttpRequest
+    ClientID:
+      name: clientID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    NumberID:
+      name: numberID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 50
+        maximum: 100
+    Offset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        default: 0
+    CallbackID:
+      name: callbackID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MessageID:
+      name: messageID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CampaignID:
+      name: campaignID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    JobID:
+      name: jobID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CheckID:
+      name: checkID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PreviewID:
+      name: previewID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    LookupStatus:
+      name: status
+      in: query
+      schema:
+        type: string
+        enum: [queued, processing, completed, completed_with_errors, failed]
+    LookupItemStatus:
+      name: status
+      in: query
+      schema:
+        type: string
+        enum: [queued, reserved, pending, completed, failed]
+    LookupCheckType:
+      name: check_type
+      in: query
+      schema:
+        type: string
+        enum: [hlr, ping]
+    WebhookID:
+      name: webhookID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    KeyID:
+      name: keyID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 255
+      description: Optional. Same key plus same body replays the stored 202; different body → 409.
+  securitySchemes:
+    adminCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-fn_admin_sid
+    clientCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-fn_client_sid
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: fnk_live_{prefix}_{secret}
+  schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+    CreateClientRequest:
+      type: object
+      required: [name, owner_email, owner_password]
+      properties:
+        name:
+          type: string
+        owner_email:
+          type: string
+          format: email
+        owner_password:
+          type: string
+          minLength: 10
+    PatchClientRequest:
+      type: object
+      properties:
+        name:
+          type: string
+    ResetPasswordRequest:
+      type: object
+      required: [password]
+      properties:
+        password:
+          type: string
+          minLength: 10
+    ClientDetail:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, deleted]
+        users:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              email:
+                type: string
+              role:
+                type: string
+              status:
+                type: string
+    AssignNumberRequest:
+      type: object
+      required: [client_id]
+      properties:
+        client_id:
+          type: string
+          format: uuid
+    PatchNumberRequest:
+      type: object
+      properties:
+        region:
+          type: string
+        notes:
+          type: string
+        status:
+          type: string
+          enum: [inventory, disabled]
+    NumberUploadReport:
+      type: object
+      properties:
+        imported:
+          type: integer
+        duplicates:
+          type: integer
+        encoding:
+          type: string
+        invalid:
+          type: array
+          items:
+            type: object
+            properties:
+              line:
+                type: integer
+              value:
+                type: string
+              error:
+                type: string
+    NumberSyncReport:
+      type: object
+      properties:
+        fetched:
+          type: integer
+        sms_ok:
+          type: integer
+        imported:
+          type: integer
+        updated:
+          type: integer
+        skipped_no_sms:
+          type: integer
+        skipped_invalid:
+          type: integer
+        truncated:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: string
+    SMSDirections:
+      type: object
+      properties:
+        in:
+          type: boolean
+        dom_out:
+          type: boolean
+        int_out:
+          type: boolean
+        in_mass:
+          type: boolean
+    SystemSettings:
+      type: object
+      properties:
+        runexis_email:
+          type: string
+        runexis_password_set:
+          type: boolean
+        dek_key_id:
+          type: string
+        callback_base_url:
+          type: string
+        sms_directions:
+          $ref: "#/components/schemas/SMSDirections"
+        provider_rps:
+          type: number
+        client_rps_default:
+          type: number
+        retention_days:
+          type: integer
+        audit_retention_days:
+          type: integer
+        ops_retention_days:
+          type: integer
+          minimum: 1
+          maximum: 90
+        ingress_token_set:
+          type: boolean
+        ingress_token:
+          type: string
+          description: Plaintext only in the PATCH response that rotated it
+        updated_at:
+          type: string
+          format: date-time
+        lookup_enabled:
+          type: boolean
+        lookup_check_timeout_sec:
+          type: integer
+        lookup_poll_interval_sec:
+          type: integer
+        lookup_max_csv_rows:
+          type: integer
+        lookup_max_csv_bytes:
+          type: integer
+        lookup_max_batch_phones:
+          type: integer
+        lookup_webhook_max_attempts:
+          type: integer
+        lookup_webhook_timeout_ms:
+          type: integer
+        lookup_retention_days:
+          type: integer
+        smsc_base_url:
+          type: string
+        smsc_login:
+          type: string
+        smsc_password_set:
+          type: boolean
+        smsc_apikey_set:
+          type: boolean
+        smsc_callback_secret_set:
+          type: boolean
+        smsc_currency:
+          type: string
+        smsc_callback_url:
+          type: string
+          description: Derived from callback_base_url; set manually in the SMSC.ru cabinet
+    PatchSettingsRequest:
+      type: object
+      properties:
+        runexis_email:
+          type: string
+        runexis_password:
+          type: string
+          writeOnly: true
+        callback_base_url:
+          type: string
+        sms_directions:
+          $ref: "#/components/schemas/SMSDirections"
+        provider_rps:
+          type: number
+        client_rps_default:
+          type: number
+        retention_days:
+          type: integer
+        audit_retention_days:
+          type: integer
+        ops_retention_days:
+          type: integer
+          minimum: 1
+          maximum: 90
+        rotate_ingress_token:
+          type: boolean
+        lookup_enabled:
+          type: boolean
+        lookup_check_timeout_sec:
+          type: integer
+        lookup_poll_interval_sec:
+          type: integer
+        lookup_max_csv_rows:
+          type: integer
+        lookup_max_csv_bytes:
+          type: integer
+        lookup_max_batch_phones:
+          type: integer
+        lookup_webhook_max_attempts:
+          type: integer
+        lookup_webhook_timeout_ms:
+          type: integer
+        lookup_retention_days:
+          type: integer
+        smsc_base_url:
+          type: string
+        smsc_login:
+          type: string
+        smsc_password:
+          type: string
+          writeOnly: true
+        smsc_apikey:
+          type: string
+          writeOnly: true
+        smsc_callback_secret:
+          type: string
+          writeOnly: true
+        smsc_currency:
+          type: string
+    SendMessageRequest:
+      type: object
+      required: [from, to, text]
+      properties:
+        from:
+          type: string
+          description: Assigned DEF, canonical 7XXXXXXXXXX
+        to:
+          type: string
+          description: Destination MSISDN as a string
+        text:
+          type: string
+          maxLength: 1000
+    SmsMessage:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        direction:
+          type: string
+          enum: [outbound, inbound]
+        from:
+          type: string
+        to:
+          type: string
+        text:
+          type: string
+        status:
+          type: string
+          enum: [queued, accepted, sent, delivered, failed]
+        provider_sms_id:
+          type: string
+        provider_status:
+          type: string
+          description: Provider error or status text (e.g. Runexis HTTP 500 message and request_id)
+        created_at:
+          type: string
+          format: date-time
+        accepted_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+        delivered_at:
+          type: string
+          format: date-time
+        failed_at:
+          type: string
+          format: date-time
+    CreateCampaignRequest:
+      type: object
+      required: [from, text]
+      properties:
+        from:
+          type: string
+        text:
+          type: string
+          maxLength: 1000
+    PatchCampaignRequest:
+      type: object
+      properties:
+        from:
+          type: string
+        text:
+          type: string
+          maxLength: 1000
+    SmsCampaign:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        from:
+          type: string
+        text:
+          type: string
+        status:
+          type: string
+          enum: [draft, queued, running, completed, failed, cancelled]
+        total_count:
+          type: integer
+        accepted_count:
+          type: integer
+        delivered_count:
+          type: integer
+        failed_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        recipients:
+          type: object
+          properties:
+            total:
+              type: integer
+            pending:
+              type: integer
+            enqueued:
+              type: integer
+            skipped:
+              type: integer
+            failed:
+              type: integer
+    CreateAPIKeyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [sms:send, sms:read, campaigns:write, lookup:write, lookup:read]
+          description: Empty copies all current scopes; existing keys stay opt-in for lookup
+        allowed_cidrs:
+          type: array
+          items:
+            type: string
+          description: Empty = any IP
+    APIKeyCreated:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        key_prefix:
+          type: string
+        token:
+          type: string
+          description: Plaintext shown only at creation
+        scopes:
+          type: array
+          items:
+            type: string
+        allowed_cidrs:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, revoked]
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+    LookupCheckRequest:
+      type: object
+      required: [phone, type]
+      properties:
+        phone:
+          type: string
+          description: Russian mobile +79XXXXXXXXX
+        type:
+          type: string
+          enum: [hlr, ping]
+    LookupJobRequest:
+      type: object
+      required: [phones, type]
+      properties:
+        phones:
+          type: array
+          items:
+            type: string
+        type:
+          type: string
+          enum: [hlr, ping]
+    LookupEstimateRequest:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [hlr, ping]
+        phone:
+          type: string
+        phones:
+          type: array
+          items:
+            type: string
+    LookupJob:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [hlr, ping]
+        source:
+          type: string
+          enum: [single, bulk, api]
+        status:
+          type: string
+          enum: [queued, processing, completed, completed_with_errors, failed]
+        item_count:
+          type: integer
+        success_count:
+          type: integer
+        failure_count:
+          type: integer
+        unit_sell_price:
+          type: string
+        estimated_cost:
+          type: string
+        actual_cost:
+          type: string
+          description: Wallet sell debit (sum of captured item shares), not SMSC provider cost. Empty after RELEASE.
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    LookupItem:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        job_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [hlr, ping]
+        status:
+          type: string
+          enum: [queued, reserved, pending, completed, failed]
+        phone:
+          type: string
+        result_status:
+          type: string
+        is_reachable:
+          type: boolean
+        unit_sell_price:
+          type: string
+          description: Cabinet/public sell price only; no provider cost
+        actual_cost:
+          type: string
+          description: Captured sell share written by settle, not SMSC provider cost. Empty after RELEASE.
+    CreateWebhookRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+            enum: [check.completed, check.failed, job.completed]
+          description: Empty = all events
+        enabled:
+          type: boolean
+          default: true
+    PatchWebhookRequest:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+            enum: [check.completed, check.failed, job.completed]
+        enabled:
+          type: boolean
+    WebhookEndpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        description:
+          type: string
+        enabled:
+          type: boolean
+        events:
+          type: array
+          items:
+            type: string
+        consecutive_failures:
+          type: integer
+        secret:
+          type: string
+          description: Only on create and rotate-secret
+tags:
+  - name: ops
+  - name: admin
+  - name: client
+  - name: public
+  - name: ingress

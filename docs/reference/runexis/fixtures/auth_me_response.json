@@ -1,0 +1,8 @@
+{
+  "data": {
+    "name": "test_user",
+    "email": "user@example.com",
+    "created_at": "2024-01-01"
+  },
+  "success": true
+}

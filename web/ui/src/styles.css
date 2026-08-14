@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@source ".";
+@source "../../admin/src";
+@source "../../client/src";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-fn-fg: #18181b;
+  --color-fn-muted: #71717a;
+  --color-fn-border: #e4e4e7;
+  --color-fn-bg: #fafafa;
+  --color-fn-card: #ffffff;
+  --color-fn-accent: #2563eb;
+  --color-fn-danger: #dc2626;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-fn-bg);
+  color: var(--color-fn-fg);
+  font-family: var(--font-sans);
+}

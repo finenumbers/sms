@@ -1,0 +1,54 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "internal/db/queries"
+    schema:
+      - "db/migrations/000001_init.up.sql"
+      - "db/migrations/000002_direction_jobs.up.sql"
+      - "db/migrations/000003_wave9.up.sql"
+      - "db/migrations/000004_ops_events.up.sql"
+      - "db/migrations/000005_billing.up.sql"
+      - "db/migrations/000006_billing_enforced.up.sql"
+      - "db/migrations/000007_lookup_products.up.sql"
+      - "db/migrations/000008_lookup.up.sql"
+      - "db/migrations/000009_lookup_enrich.up.sql"
+      - "db/migrations/000010_smsc_settings.up.sql"
+    gen:
+      go:
+        package: "sqlcdb"
+        out: "internal/db/sqlc"
+        sql_package: "pgx/v5"
+        emit_json_tags: true
+        emit_pointers_for_null_types: true
+        overrides:
+          - db_type: "uuid"
+            nullable: false
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          - db_type: "uuid"
+            nullable: true
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true
+          - db_type: "timestamptz"
+            nullable: false
+            go_type: "time.Time"
+          - db_type: "timestamptz"
+            nullable: true
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+          - db_type: "billing_money"
+            nullable: false
+            go_type:
+              import: "github.com/shopspring/decimal"
+              type: "Decimal"
+          - db_type: "billing_money"
+            nullable: true
+            go_type:
+              import: "github.com/shopspring/decimal"
+              type: "Decimal"
+              pointer: true

@@ -1,0 +1,50 @@
+groups:
+  - name: finenumbers
+    rules:
+      - alert: SendJobsDead
+        expr: fn_send_jobs{status="dead"} > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Dead send jobs in the outbox
+          description: fn_send_jobs{status="dead"} is {{ $value }}. Inspect send_jobs and provider_send_attempts; do not retry blindly.
+
+      - alert: LookupEnabledWithoutSMSC
+        expr: max(fn_lookup_enabled) == 1 and max(fn_smsc_configured) == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: lookup_enabled but SMSC is not configured
+          description: Service is open (fail-closed submit) while Settings have no SMSC credentials. Do not send traffic. Configure SMSC in Admin Settings or turn lookup_enabled off.
+
+      - alert: LookupHoldsStuck
+        expr: |
+          max(fn_lookup_enabled) == 1
+          and max(fn_lookup_holds_open) > 0
+          unless max(increase(fn_lookup_items{status="completed"}[20m])) > 0
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: Open lookup HOLDs without completed items
+          description: fn_lookup_holds_open is {{ $value }} while completed items did not grow. Check settle, remainder, and SMSC submit.
+
+      - alert: SMSCErrorCode9
+        expr: sum(increase(fn_smsc_error_code_9_total[10m])) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: SMSC error_code=9 (flood / rate limit)
+          description: {{ $value }} error_code=9 in 10m. Same SMSC account as old HLR — back off, do not raise submit_batch_size.
+
+      - alert: SMSCCallbackLag
+        expr: max(fn_smsc_callback_lag_seconds) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Unprocessed SMSC callback older than poll_interval
+          description: Oldest raw callback is {{ $value }}s old (default poll_interval_sec=30). Check /internal/smsc/callback and lookup Tick applyStoredCallbacks.

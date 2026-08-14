@@ -1,0 +1,28 @@
+{
+  "name": "finenumbers-web",
+  "private": true,
+  "workspaces": ["ui", "admin", "client"],
+  "scripts": {
+    "build": "npm run build --workspace=admin --workspace=client",
+    "dev:admin": "npm run dev --workspace=admin",
+    "dev:client": "npm run dev --workspace=client"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.84.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.7.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.7.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

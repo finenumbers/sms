@@ -1,0 +1,15 @@
+{
+  "data": {
+    "hook_urls": [
+      "http://www.mcclure.com/sms-handler"
+    ],
+    "dlr_urls": [
+      "http://www.mcclure.com/sms-handler"
+    ],
+    "in": true,
+    "dom_out": true,
+    "int_out": false,
+    "in_mass": true
+  },
+  "success": true
+}

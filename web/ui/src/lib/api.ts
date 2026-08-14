@@ -1,0 +1,101 @@
+export class ApiError extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+const errorByCode: Record<string, string> = {
+  unauthorized: "Нужна авторизация",
+  forbidden: "Недостаточно прав",
+  validation: "Проверьте поля запроса",
+  invalid_json: "Проверьте поля запроса",
+  not_assigned: "Номер не назначен этому клиенту",
+  int_out_disabled: "Международные SMS выключены",
+  rate_limited: "Слишком много запросов, подождите",
+  not_found: "Не найдено",
+  unavailable: "Сервис временно недоступен",
+  conflict: "Конфликт с текущим состоянием",
+  insufficient_funds: "Недостаточно средств",
+  tariff_not_configured: "Тариф не назначен",
+  lookup_disabled: "Услуга не подключена",
+  client_suspended: "Клиент заблокирован",
+  invalid_tariff: "Тариф недействителен",
+  negative_balance_forbidden: "Отрицательный баланс запрещён",
+};
+
+export function formatApiError(error: unknown): string {
+  if (error instanceof ApiError && errorByCode[error.code]) {
+    return errorByCode[error.code];
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return "ошибка";
+}
+
+type Json = Record<string, unknown> | unknown[] | string | number | boolean | null;
+
+async function parseBody(res: Response): Promise<unknown> {
+  if (res.status === 204) {
+    return undefined;
+  }
+  const text = await res.text();
+  if (!text) {
+    return undefined;
+  }
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return text;
+  }
+}
+
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers = new Headers(init.headers);
+  headers.set("X-Requested-With", "XMLHttpRequest");
+  const isForm = typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (init.body && !isForm && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+  const res = await fetch(path, { ...init, credentials: "include", headers });
+  const data = await parseBody(res);
+  if (!res.ok) {
+    const err = (data ?? {}) as { error?: { code?: string; message?: string } };
+    throw new ApiError(
+      res.status,
+      err.error?.code ?? "error",
+      err.error?.message ?? res.statusText,
+    );
+  }
+  return data as T;
+}
+
+export function createApi(base: string) {
+  const url = (path: string) => (path.startsWith("http") ? path : `${base}${path}`);
+  return {
+    get: <T>(path: string) => request<T>(url(path)),
+    post: <T>(path: string, body?: Json) =>
+      request<T>(url(path), { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
+    patch: <T>(path: string, body: Json) =>
+      request<T>(url(path), { method: "PATCH", body: JSON.stringify(body) }),
+    delete: (path: string) => request<void>(url(path), { method: "DELETE" }),
+    upload: <T>(path: string, file: File, field = "file", extra?: Record<string, string>) => {
+      const fd = new FormData();
+      if (extra) {
+        for (const [k, v] of Object.entries(extra)) {
+          fd.set(k, v);
+        }
+      }
+      fd.set(field, file);
+      return request<T>(url(path), { method: "POST", body: fd });
+    },
+  };
+}
+
+export type Api = ReturnType<typeof createApi>;

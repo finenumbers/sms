@@ -1,0 +1,6 @@
+{
+  "code": 400,
+  "message": "validation error",
+  "request_id": "req-fixture-1",
+  "success": false
+}

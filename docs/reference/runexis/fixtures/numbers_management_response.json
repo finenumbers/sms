@@ -1,0 +1,60 @@
+{
+  "data": [
+    {
+      "id": "8ace264b-a78e-488e-b411-af2581bd3f11",
+      "code": "999",
+      "number": "1234567",
+      "status": {
+        "id": "c4f20b18-8b24-4c6f-8e3e-4d2f2f638c10",
+        "name": "Free",
+        "mnemonic": "free"
+      },
+      "sump_until": null,
+      "partner": {
+        "id": "c8c627d5-1e5a-4f7e-a98a-5c81289ae001",
+        "name": "Partner name"
+      },
+      "ipAddress": "10.0.0.5",
+      "project": {
+        "id": "f6d574d6-1998-46c8-b3d8-d74c4ef0c100",
+        "name": "Project name"
+      },
+      "city": {
+        "id": 77,
+        "name": "Moscow"
+      },
+      "tariff": {
+        "id": "1118b6bf-a8d8-4efa-9f3c-05b2919b20d0",
+        "name": "Starter Plan"
+      },
+      "installationCost": 10,
+      "subscriptionFee": 99.99,
+      "comment": "Test comment",
+      "class": {
+        "id": 0,
+        "name": "Простой",
+        "mnemonic": "simple"
+      },
+      "equipment": {
+        "id": 123,
+        "name": "Mera equipment"
+      },
+      "operator": {
+        "id": "01.2008",
+        "name": "Operator"
+      },
+      "lastActionAt": "2025-01-01T00:00:00Z",
+      "responsible": {
+        "id": "17f495d4-88c4-46a7-b8f9-2d561c6af99d",
+        "name": "Manager"
+      },
+      "meraPrice": 50.5
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "limit": 30
+  },
+  "success": true
+}

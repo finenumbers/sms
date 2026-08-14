@@ -1,0 +1,32 @@
+{
+  "data": [
+    {
+      "sms_id": "8ace264b-a78e-488e-b411-af2581bd3f23",
+      "date": "2025-12-01 16:00:45",
+      "sender_number": "79991234567",
+      "receiver_number": "79876543210",
+      "message": "Per aspera ad astra.",
+      "incoming": true,
+      "pdu": 1,
+      "sent": true,
+      "delivered": true
+    },
+    {
+      "sms_id": "71e4c84e-1a49-4b3a-9c14-5c6b0a17c0a2",
+      "date": "2025-12-02 12:30:41",
+      "sender_number": "79876543210",
+      "receiver_number": "79991234567",
+      "message": "Lorem ipsum.",
+      "incoming": true,
+      "pdu": 1,
+      "sent": true,
+      "delivered": true
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "page": 1,
+    "limit": 30
+  },
+  "success": true
+}

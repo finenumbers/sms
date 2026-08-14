@@ -292,15 +292,17 @@ Base URL: `https://didapi.runexis.ru`
 | Name | Type | Optional | Description |
 |---|---|---|---|
 | from_number | string | no | Номер отправителя СМС. Must be 11 digits. Must start with one of 7 . Example: 79991112233 |
-| to_number | number | no | Номер получателя СМС. Example: 79993332211 |
+| to_number | string | no | Номер получателя СМС. HTML documents `number`; live/support (2026-08-14) require a JSON string. Example: `"79993332211"` |
 | text | string | no | Текст СМС. Example: Пример сообщения |
 
 **Example request body**
 
+HTML dump had `"to_number": 79993332211` (number). We send a string:
+
 ```json
 {
   "from_number": "79991112233",
-  "to_number": 79993332211,
+  "to_number": "79993332211",
   "text": "Пример сообщения"
 }
 ```

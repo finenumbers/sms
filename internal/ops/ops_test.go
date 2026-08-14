@@ -54,7 +54,7 @@ func TestRedactJSONKeepsProviderEnvelopeMessage(t *testing.T) {
 }
 
 func TestRedactJSONSendText(t *testing.T) {
-	in := []byte(`{"from_number":"79391125968","to_number":79994504444,"text":"secret sms"}`)
+	in := []byte(`{"from_number":"79391125968","to_number":"79994504444","text":"secret sms"}`)
 	got := RedactJSON(in)
 	var m map[string]any
 	if err := json.Unmarshal(got, &m); err != nil {

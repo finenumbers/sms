@@ -9,10 +9,9 @@
 `POST https://didapi.runexis.ru/api/v1/sms/send`
 
 - `from_number`: string, 11 цифр, начинается с `7`
-- `to_number`: JSON **integer** (int64), не float64 (в PHP-примере эталона ошибочно `.0`)
+- `to_number`: JSON **string** (digits, 8–15). HTML documents `number`; that is wrong. Support 2026-08-14: integer `to_number` → HTTP 500 `an unexpected error has occurred`. Live 2026-08-12 integer POST is the failed case, not the contract.
 - `text`: string
 - Example response в HTML **нет** — фиксируется живой фикстурой
-- Live audit (2026-08-12, sms `a068e8a6-…`): worker отправил HTML-контракт запроса (`POST /api/v1/sms/send`, заголовки `Authorization` / `Content-Type` / `Accept`, body `{from_number: string 7XXXXXXXXXX, to_number: int64, text}`). Runexis ответил HTTP 500 `an unexpected error has occurred` (не 400) — это не отказ валидации по эталону. Сырые байты того POST в `ops_events` не сохранились (журнал request появился позже); форма восстанавливается из `sms_messages` + `marshalSend`. Marshaler из-за 500 не менять.
 
 Если живой API разойдётся с HTML — меняется marshaler, не домен.
 

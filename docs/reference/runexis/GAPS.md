@@ -36,7 +36,7 @@ No payload example for the message body delivered to our handler.
 
 ### 3. `POST /api/v1/sms/send` response example missing
 
-Request body is documented:
+HTML request body (wrong type on `to_number`):
 
 ```json
 {
@@ -46,13 +46,15 @@ Request body is documented:
 }
 ```
 
+Live contract (support 2026-08-14): `to_number` is a JSON **string**. Integer body → HTTP 500 `an unexpected error has occurred`. Fixture we send: [`fixtures/sms_send_request.json`](fixtures/sms_send_request.json).
+
 Vendor HTML has **no** `Example response (200)` for send. Unknown whether response includes `sms_id` (or equivalent) needed to correlate later DLR / statistic rows.
 
 **Action:** smoke-test against sandbox/prod agent account; store the live envelope as `fixtures/sms_send_response.provisional.json` (replace) after redacting secrets/MSISDN.
 
 Provisional parser (wave 3): success envelope `{data, success}`. `sms_id` is read from `data.sms_id` / `data.id` / `data.message_id`, or from a string `data`. Empty `data` is accepted (provider id unknown until statistic/DLR). Fixture: [`fixtures/sms_send_response.provisional.json`](fixtures/sms_send_response.provisional.json).
 
-Live request (2026-08-12, sms `a068e8a6-…`, `79391125968` → `79994504444`, text `test`) matched the HTML curl/Python/JS example (integer `to_number`, not PHP Scribe `.0`). Both POSTs returned HTTP 500 `an unexpected error has occurred` — not 400 — so the documented request schema was accepted. The success-response gap remains.
+Live request (2026-08-12, sms `a068e8a6-…`, integer `to_number`) returned HTTP 500. That was a type error on the vendor side, not proof that the HTML schema was accepted. The success-response gap remains until a string-body send returns 2xx.
 
 ## Important product gaps (not DIDAPI bugs)
 
@@ -93,7 +95,7 @@ Until that happens, send goes through outbox + statistic; DLR/inbox is best-effo
 
 | Item | Note |
 |---|---|
-| `to_number` type | Documented as `number` while `from_number` is `string` (11 digits, starts with `7`). Normalize to string MSISDN in our API. |
+| `to_number` type | HTML `number` is wrong. Support 2026-08-14: JSON string. Our public API already uses string MSISDN. |
 | Statistic via GET + body | `/api/v1/sms/statistic` is documented as GET with a JSON body. Confirm client/proxy behavior; may need special HTTP client handling. |
 | Dual send channels | `/api/v1/sms/send` (product) vs `/api/v1/numbers/{number}/sim/send-sms` (informational SIM). Do not mix. |
 | DELETE dlr/hook body | Extracted examples sometimes show a `url` body on DELETE; treat as unverified — confirm before relying on it. |
@@ -107,7 +109,7 @@ Until that happens, send goes through outbox + statistic; DLR/inbox is best-effo
 |---|---|---|
 | DLR payload | provisional — statistic field names | Wave 9: `fixtures/dlr_callback.provisional.json`; parser + worker. Replace with live capture |
 | MO payload | provisional — statistic field names | Wave 9: `fixtures/mo_callback.provisional.json`; parser + worker. Replace with live capture |
-| Send request vs HTML | verified | 2026-08-12 live POST matched HTML curl/Python/JS; see `TestMarshalSendLiveAttemptMatchesHTMLContract` |
-| Send response | provisional | `fixtures/sms_send_response.provisional.json` — live send returned 500, no success body |
+| Send request vs HTML | resolved | HTML `to_number` number is wrong; wire is JSON string (support 2026-08-14). See `TestMarshalSendToNumberStringContract` |
+| Send response | provisional | `fixtures/sms_send_response.provisional.json` — integer live send returned 500; recapture after string body |
 | Campaign API | accepted as ours | product design |
 | Purchase APIs | out of scope | product design |

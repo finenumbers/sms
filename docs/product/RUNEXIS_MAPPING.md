@@ -52,7 +52,7 @@ flowchart LR
 
 | Product feature | Our responsibility | Runexis DIDAPI |
 |---|---|---|
-| Send SMS | validate client owns `from_msisdn`; write `SmsMessage`; call provider | `POST /api/v1/sms/send` `{from_number, to_number, text}` — request verified live against HTML (2026-08-12); success response still a gap |
+| Send SMS | validate client owns `from_msisdn`; write `SmsMessage`; call provider | `POST /api/v1/sms/send` `{from_number, to_number, text}` — `to_number` is a JSON **string** (support 2026-08-14; HTML `number` is wrong). Success response still a gap |
 | Delivery confirmations | update status from DLR +/or statistic | DLR callback URL (**payload gap**); `GET /api/v1/sms/statistic` |
 | Receive SMS (inbox) | persist MO via ingress; list in LK | MO callback URL (**payload gap**); statistic with `incoming=true` as backfill |
 | Message history | query `SmsMessage` (primary), statistic as reconciliation | `/api/v1/sms/statistic` |

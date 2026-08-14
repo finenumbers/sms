@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -131,7 +130,7 @@ type wireMeData struct {
 
 type wireSendRequest struct {
 	FromNumber string `json:"from_number"`
-	ToNumber   int64  `json:"to_number"`
+	ToNumber   string `json:"to_number"`
 	Text       string `json:"text"`
 }
 
@@ -169,15 +168,27 @@ func marshalSend(in SendInput) ([]byte, error) {
 	if len(from) != 11 || from[0] != '7' {
 		return nil, fmt.Errorf("from_number: want 7XXXXXXXXXX")
 	}
-	n, err := strconv.ParseInt(to, 10, 64)
-	if err != nil || n <= 0 {
+	if !validDestMSISDN(to) {
 		return nil, fmt.Errorf("to_number: invalid msisdn")
 	}
 	return json.Marshal(wireSendRequest{
 		FromNumber: from,
-		ToNumber:   n,
+		ToNumber:   to,
 		Text:       in.Text,
 	})
+}
+
+func validDestMSISDN(s string) bool {
+	n := len(s)
+	if n < 8 || n > 15 {
+		return false
+	}
+	for i := 0; i < n; i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func parseSendResponse(body []byte) (SendResult, error) {

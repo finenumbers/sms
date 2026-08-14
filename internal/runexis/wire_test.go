@@ -27,7 +27,7 @@ func fixture(t *testing.T, name string) []byte {
 	return bytes.TrimSpace(b)
 }
 
-func TestMarshalSendToNumberIsJSONInteger(t *testing.T) {
+func TestMarshalSendToNumberIsJSONString(t *testing.T) {
 	raw, err := marshalSend(SendInput{From: "79991112233", To: "79993332211", Text: "Пример сообщения"})
 	if err != nil {
 		t.Fatal(err)
@@ -45,26 +45,23 @@ func TestMarshalSendToNumberIsJSONInteger(t *testing.T) {
 	if string(gotNorm) != string(wantNorm) {
 		t.Fatalf("got %s want %s", gotNorm, wantNorm)
 	}
-	if string(raw) != "" && !bytes.Contains(raw, []byte(`"to_number":79993332211`)) {
-		t.Fatalf("to_number not integer: %s", raw)
+	if !bytes.Contains(raw, []byte(`"to_number":"79993332211"`)) {
+		t.Fatalf("to_number not string: %s", raw)
 	}
-	if bytes.Contains(raw, []byte("79993332211.0")) || bytes.Contains(raw, []byte("e+")) {
-		t.Fatalf("float-like to_number: %s", raw)
+	if bytes.Contains(raw, []byte(`"to_number":79993332211`)) || bytes.Contains(raw, []byte(".0")) || bytes.Contains(raw, []byte("e+")) {
+		t.Fatalf("to_number not JSON string: %s", raw)
 	}
 }
 
-// Live 2026-08-12 send (sms a068e8a6-…): same three HTML fields, integer to_number.
-func TestMarshalSendLiveAttemptMatchesHTMLContract(t *testing.T) {
+// Support 2026-08-14: to_number must be a JSON string. Integer body returned HTTP 500.
+func TestMarshalSendToNumberStringContract(t *testing.T) {
 	raw, err := marshalSend(SendInput{From: "79391125968", To: "79994504444", Text: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `{"from_number":"79391125968","to_number":79994504444,"text":"test"}`
+	want := `{"from_number":"79391125968","to_number":"79994504444","text":"test"}`
 	if string(raw) != want {
 		t.Fatalf("got %s want %s", raw, want)
-	}
-	if bytes.Contains(raw, []byte(`"to_number":"`)) || bytes.Contains(raw, []byte(".0")) || bytes.Contains(raw, []byte("e+")) {
-		t.Fatalf("to_number not HTML integer: %s", raw)
 	}
 }
 
@@ -155,7 +152,7 @@ func TestClientSmokeAgainstFixtures(t *testing.T) {
 				t.Error("send missing Bearer")
 			}
 			raw, _ := io.ReadAll(r.Body)
-			if !bytes.Contains(raw, []byte(`"to_number":79993332211`)) {
+			if !bytes.Contains(raw, []byte(`"to_number":"79993332211"`)) {
 				t.Errorf("send wire: %s", raw)
 			}
 			var wire wireSendRequest

@@ -283,16 +283,8 @@ func parseRunexisTime(s string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("cannot parse %q", s)
 }
 
-func formatMoscow(t time.Time) string {
-	return t.In(moscowLocation()).Format("2006-01-02 15:04:05")
-}
-
-func moscowLocation() *time.Location {
-	loc, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		return time.FixedZone("Europe/Moscow", 3*3600)
-	}
-	return loc
+func formatStatisticTime(t time.Time) string {
+	return t.UTC().Format("2006-01-02 15:04:05")
 }
 
 func marshalStatistic(q StatisticQuery) ([]byte, error) {
@@ -300,8 +292,8 @@ func marshalStatistic(q StatisticQuery) ([]byte, error) {
 		return nil, fmt.Errorf("statistic from/to required")
 	}
 	body := wireStatisticRequest{
-		From:            formatMoscow(q.From),
-		To:              formatMoscow(q.To),
+		From:            formatStatisticTime(q.From),
+		To:              formatStatisticTime(q.To),
 		SenderNumbers:   q.SenderNumbers,
 		ReceiverNumbers: q.ReceiverNumbers,
 		Incoming:        q.Incoming,

@@ -34,27 +34,21 @@ No payload example for the message body delivered to our handler.
 
 **Action:** same as DLR — confirm contract + store fixtures.
 
-### 3. `POST /api/v1/sms/send` response example missing
+### 3. `POST /api/v1/sms/send` response — captured
 
-HTML request body (wrong type on `to_number`):
+HTML still has no example. Live 2026-08-14 (string `to_number`):
 
 ```json
 {
-  "from_number": "79991112233",
-  "to_number": 79993332211,
-  "text": "Пример сообщения"
+  "success": true,
+  "data": {
+    "id": "267e902f-97ed-11f1-a65b-000c296c1599",
+    "pdu": 1
+  }
 }
 ```
 
-Live contract (support 2026-08-14): `to_number` is a JSON **string**. Integer body → HTTP 500 `an unexpected error has occurred`. Fixture we send: [`fixtures/sms_send_request.json`](fixtures/sms_send_request.json).
-
-Vendor HTML has **no** `Example response (200)` for send. Unknown whether response includes `sms_id` (or equivalent) needed to correlate later DLR / statistic rows.
-
-**Action:** smoke-test against sandbox/prod agent account; store the live envelope as `fixtures/sms_send_response.provisional.json` (replace) after redacting secrets/MSISDN.
-
-Provisional parser (wave 3): success envelope `{data, success}`. `sms_id` is read from `data.sms_id` / `data.id` / `data.message_id`, or from a string `data`. Empty `data` is accepted (provider id unknown until statistic/DLR). Fixture: [`fixtures/sms_send_response.provisional.json`](fixtures/sms_send_response.provisional.json).
-
-Live request (2026-08-12, sms `a068e8a6-…`, integer `to_number`) returned HTTP 500. That was a type error on the vendor side, not proof that the HTML schema was accepted. The success-response gap remains until a string-body send returns 2xx.
+Provider id is `data.id` (not `data.sms_id`). Statistic rows use `sms_id` for the same UUID. Parser already reads `sms_id` / `id` / `message_id`. Fixture: [`fixtures/sms_send_response.json`](fixtures/sms_send_response.json).
 
 ## Important product gaps (not DIDAPI bugs)
 
@@ -86,7 +80,7 @@ Provisional DLR/MO/send-response fixtures stay until a **live** DIDAPI callback 
 2. `callback_base_url` = `https://api.{fqdn}` → register dlr-url / hook-url.
 3. Send a real SMS (LK or `/v1`) and, if possible, trigger an inbound MO.
 4. Admin → Callbacks: open the raw event, redact secrets/MSISDN.
-5. Replace `fixtures/dlr_callback.provisional.json`, `dlr_callback.failed.provisional.json`, `mo_callback.provisional.json`, and/or `sms_send_response.provisional.json` with the captured envelope. Rename without `.provisional`.
+5. Replace `fixtures/dlr_callback.provisional.json`, `dlr_callback.failed.provisional.json`, `mo_callback.provisional.json` with the captured envelope. Rename without `.provisional`. Send response is captured: [`fixtures/sms_send_response.json`](fixtures/sms_send_response.json).
 6. Tighten [`internal/ingress`](../../../internal/ingress/ingress.go) and send-response parser against those files; update this table.
 
 Until that happens, send goes through outbox + statistic; DLR/inbox is best-effort on the provisional parser.
@@ -96,7 +90,7 @@ Until that happens, send goes through outbox + statistic; DLR/inbox is best-effo
 | Item | Note |
 |---|---|
 | `to_number` type | HTML `number` is wrong. Support 2026-08-14: JSON string. Our public API already uses string MSISDN. |
-| Statistic via GET + body | `/api/v1/sms/statistic` is documented as GET with a JSON body. Confirm client/proxy behavior; may need special HTTP client handling. |
+| Statistic via GET + body | `/api/v1/sms/statistic` is GET with JSON body. Live `date` is naive **UTC** (same wall clock as our `created_at` Z). Moscow-shifted `from`/`to` miss rows (2026-08-14: UTC window found `cdd877f7…` delivered; +3h window returned empty). |
 | Dual send channels | `/api/v1/sms/send` (product) vs `/api/v1/numbers/{number}/sim/send-sms` (informational SIM). Do not mix. |
 | DELETE dlr/hook body | Extracted examples sometimes show a `url` body on DELETE; treat as unverified — confirm before relying on it. |
 | `sms/account` as SMS capability | HTML documents settings (`in`/`dom_out`/`int_out`/`in_mass`), not a capability catalog. v1 treats HTTP 200 as “SMS exists” (even if all flags are false) and 4xx as skip. 200 is **not** proof that `POST /sms/send` will succeed; 4xx is **not** proof that send would fail. Do not invent a `sms` field on management. |
@@ -110,6 +104,7 @@ Until that happens, send goes through outbox + statistic; DLR/inbox is best-effo
 | DLR payload | provisional — statistic field names | Wave 9: `fixtures/dlr_callback.provisional.json`; parser + worker. Replace with live capture |
 | MO payload | provisional — statistic field names | Wave 9: `fixtures/mo_callback.provisional.json`; parser + worker. Replace with live capture |
 | Send request vs HTML | resolved | HTML `to_number` number is wrong; wire is JSON string (support 2026-08-14). See `TestMarshalSendToNumberStringContract` |
-| Send response | provisional | `fixtures/sms_send_response.provisional.json` — integer live send returned 500; recapture after string body |
+| Send response | resolved | Live 2026-08-14: `{success, data:{id, pdu}}`. Fixture `sms_send_response.json`. Parser already reads `data.id` |
+| Statistic date TZ | resolved | Live `date` is UTC naive, not Moscow. `formatStatisticTime` |
 | Campaign API | accepted as ours | product design |
 | Purchase APIs | out of scope | product design |

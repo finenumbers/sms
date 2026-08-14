@@ -65,12 +65,12 @@ func TestMarshalSendToNumberStringContract(t *testing.T) {
 	}
 }
 
-func TestParseSendResponseProvisionalAndEmpty(t *testing.T) {
-	got, err := parseSendResponse(fixture(t, "sms_send_response.provisional.json"))
+func TestParseSendResponseLiveAndEmpty(t *testing.T) {
+	got, err := parseSendResponse(fixture(t, "sms_send_response.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.ProviderSMSID != "8ace264b-a78e-488e-b411-af2581bd3f23" {
+	if got.ProviderSMSID != "267e902f-97ed-11f1-a65b-000c296c1599" {
 		t.Fatalf("sms_id=%q", got.ProviderSMSID)
 	}
 	empty, err := parseSendResponse(fixture(t, "sms_send_response.empty.json"))
@@ -121,7 +121,7 @@ func TestClientSmokeAgainstFixtures(t *testing.T) {
 	loginBody := fixture(t, "auth_login_response.json")
 	refreshBody := fixture(t, "auth_refresh_response.json")
 	meBody := fixture(t, "auth_me_response.json")
-	sendResp := fixture(t, "sms_send_response.provisional.json")
+	sendResp := fixture(t, "sms_send_response.json")
 	statResp := fixture(t, "sms_statistic_response.json")
 
 	var sawStatisticBody bool
@@ -205,7 +205,7 @@ func TestClientSmokeAgainstFixtures(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if out.ProviderSMSID != "8ace264b-a78e-488e-b411-af2581bd3f23" {
+	if out.ProviderSMSID != "267e902f-97ed-11f1-a65b-000c296c1599" {
 		t.Fatalf("sms_id=%q", out.ProviderSMSID)
 	}
 
@@ -281,14 +281,7 @@ func TestRefreshPersistsNewRefreshToken(t *testing.T) {
 	}
 }
 
-func TestFormatMoscow(t *testing.T) {
-	got := formatMoscow(time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC))
-	if got != "2025-12-01 03:00:00" {
-		t.Fatalf("got %q", got)
-	}
-}
-
-func TestMarshalStatisticFlatAndMoscow(t *testing.T) {
+func TestMarshalStatisticFlatAndUTC(t *testing.T) {
 	raw, err := marshalStatistic(StatisticQuery{
 		From:          time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC),
 		To:            time.Date(2025, 12, 31, 20, 59, 59, 0, time.UTC),
@@ -302,8 +295,11 @@ func TestMarshalStatisticFlatAndMoscow(t *testing.T) {
 	if bytes.Contains(raw, []byte("[[")) {
 		t.Fatalf("nested arrays: %s", raw)
 	}
-	if !bytes.Contains(raw, []byte(`"from":"2025-12-01 03:00:00"`)) {
-		t.Fatalf("moscow from missing: %s", raw)
+	if !bytes.Contains(raw, []byte(`"from":"2025-12-01 00:00:00"`)) {
+		t.Fatalf("utc from missing: %s", raw)
+	}
+	if bytes.Contains(raw, []byte(`"from":"2025-12-01 03:00:00"`)) {
+		t.Fatalf("moscow shift must not be applied: %s", raw)
 	}
 }
 

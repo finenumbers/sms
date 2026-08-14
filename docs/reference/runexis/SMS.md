@@ -309,7 +309,17 @@ HTML dump had `"to_number": 79993332211` (number). We send a string:
 
 **Example response**
 
-_Not present in vendor HTML — see GAPS.md._
+HTML dump had none. Live 2026-08-14:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "267e902f-97ed-11f1-a65b-000c296c1599",
+    "pdu": 1
+  }
+}
+```
 
 ### Получение СМС настроек
 

@@ -13,7 +13,9 @@ import { LookupDetailPage } from "./pages/LookupDetailPage";
 import { LookupsPage } from "./pages/LookupsPage";
 import { MessageDetailPage } from "./pages/MessageDetailPage";
 import { MessagesPage } from "./pages/MessagesPage";
+import { RequireProduct } from "./pages/ServiceLocked";
 import { WebhooksPage } from "./pages/WebhooksPage";
+import { LOOKUP_PRODUCTS, SMS_PRODUCTS, useClientProducts } from "./tariffs";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +47,11 @@ function Guard({ children }: { children: ReactNode }) {
 
 function Layout({ children }: { children: ReactNode }) {
   const me = useMe();
+  const { ready, has } = useClientProducts();
+  const smsOff = ready && !has(...SMS_PRODUCTS);
+  const hlrOff = ready && !has("hlr");
+  const silentOff = ready && !has("silent_sms");
+  const lookupsOff = ready && !has(...LOOKUP_PRODUCTS);
   const bal = useQuery({
     queryKey: ["balance"],
     queryFn: () => api.get<Balance>("/billing/balance"),
@@ -76,13 +83,13 @@ function Layout({ children }: { children: ReactNode }) {
       }
       onLogout={() => logout.mutate()}
       nav={[
-        { to: "/messages", label: "Исходящие SMS" },
+        { to: "/messages", label: "Исходящие SMS", disabled: smsOff },
         { to: "/inbox", label: "Входящие SMS" },
-        { to: "/campaigns", label: "Рассылки SMS" },
+        { to: "/campaigns", label: "Рассылки SMS", disabled: smsOff },
         { separator: true },
-        { to: "/hlr", label: "HLR Lookup" },
-        { to: "/silent-sms", label: "Silent SMS" },
-        { to: "/lookups", label: "Проверки HLR / SSMS" },
+        { to: "/hlr", label: "HLR Lookup", disabled: hlrOff },
+        { to: "/silent-sms", label: "Silent SMS", disabled: silentOff },
+        { to: "/lookups", label: "Проверки HLR / SSMS", disabled: lookupsOff },
         { separator: true },
         { to: "/billing", label: "Биллинг" },
         { to: "/webhooks", label: "Webhooks" },
@@ -107,15 +114,64 @@ export function App() {
                 <Layout>
                   <Routes>
                     <Route path="/" element={<Navigate to="/messages" replace />} />
-                    <Route path="/messages" element={<MessagesPage />} />
+                    <Route
+                      path="/messages"
+                      element={
+                        <RequireProduct anyOf={SMS_PRODUCTS} title="Исходящие SMS">
+                          <MessagesPage />
+                        </RequireProduct>
+                      }
+                    />
                     <Route path="/inbox" element={<MessagesPage inbound />} />
                     <Route path="/messages/:id" element={<MessageDetailPage />} />
-                    <Route path="/campaigns" element={<CampaignsPage />} />
-                    <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
-                    <Route path="/hlr" element={<CheckCreatePage type="hlr" />} />
-                    <Route path="/silent-sms" element={<CheckCreatePage type="ping" />} />
-                    <Route path="/lookups" element={<LookupsPage />} />
-                    <Route path="/lookups/:id" element={<LookupDetailPage />} />
+                    <Route
+                      path="/campaigns"
+                      element={
+                        <RequireProduct anyOf={SMS_PRODUCTS} title="Рассылки SMS">
+                          <CampaignsPage />
+                        </RequireProduct>
+                      }
+                    />
+                    <Route
+                      path="/campaigns/:id"
+                      element={
+                        <RequireProduct anyOf={SMS_PRODUCTS} title="Рассылки SMS">
+                          <CampaignDetailPage />
+                        </RequireProduct>
+                      }
+                    />
+                    <Route
+                      path="/hlr"
+                      element={
+                        <RequireProduct anyOf={["hlr"]} title="HLR Lookup">
+                          <CheckCreatePage type="hlr" />
+                        </RequireProduct>
+                      }
+                    />
+                    <Route
+                      path="/silent-sms"
+                      element={
+                        <RequireProduct anyOf={["silent_sms"]} title="Silent SMS">
+                          <CheckCreatePage type="ping" />
+                        </RequireProduct>
+                      }
+                    />
+                    <Route
+                      path="/lookups"
+                      element={
+                        <RequireProduct anyOf={LOOKUP_PRODUCTS} title="Проверки HLR / SSMS">
+                          <LookupsPage />
+                        </RequireProduct>
+                      }
+                    />
+                    <Route
+                      path="/lookups/:id"
+                      element={
+                        <RequireProduct anyOf={LOOKUP_PRODUCTS} title="Проверки HLR / SSMS">
+                          <LookupDetailPage />
+                        </RequireProduct>
+                      }
+                    />
                     <Route path="/webhooks" element={<WebhooksPage />} />
                     <Route path="/billing" element={<BillingPage />} />
                     <Route path="/api-keys" element={<ApiKeysPage />} />

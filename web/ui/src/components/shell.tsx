@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-export type NavItem = { to: string; label: string } | { separator: true };
+export type NavItem = { to: string; label: string; disabled?: boolean } | { separator: true };
 
 const appVersion = String(import.meta.env.VITE_APP_VERSION ?? "dev").replace(/^v/i, "");
 
@@ -46,12 +46,17 @@ export function Shell({
                 to={item.to}
                 end={item.to === "/"}
                 className={({ isActive }) =>
-                  `mb-1 block rounded-md px-3 py-2 text-sm font-bold ${
-                    isActive ? "bg-[#FBE95F] text-black" : "text-white hover:bg-[#5A543B]"
-                  }`
+                  item.disabled
+                    ? `mb-1 block rounded-md px-3 py-2 text-sm font-bold text-white/40 ${
+                        isActive ? "bg-white/10" : "hover:bg-white/5"
+                      }`
+                    : `mb-1 block rounded-md px-3 py-2 text-sm font-bold ${
+                        isActive ? "bg-[#FBE95F] text-black" : "text-white hover:bg-[#5A543B]"
+                      }`
                 }
               >
-                {item.label}
+                <span className="block">{item.label}</span>
+                {item.disabled ? <span className="mt-0.5 block text-xs font-normal text-white/35">нет тарифа</span> : null}
               </NavLink>
             ),
           )}
@@ -77,6 +82,7 @@ export function LoginLayout({ title, children }: { title: string; children: Reac
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4">
       <div className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
+        <img src={logo} alt="fine numbers" className="mx-auto mb-5 block w-[80%]" />
         <h1 className="mb-4 text-lg font-semibold">{title}</h1>
         {children}
       </div>

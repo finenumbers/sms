@@ -229,10 +229,6 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
           </Button>
         </div>
       </Card>
-      <p className="text-xs text-zinc-500">
-        Пилот: только российские мобильные +79. Списание — после результата провайдера. Пока нет тарифа, кнопка покажет
-        «услуга не подключена».
-      </p>
     </div>
   );
 }

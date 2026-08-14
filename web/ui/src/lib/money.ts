@@ -23,5 +23,5 @@ export function formatBalance(v?: string | number | null, currency = "RUB"): str
     maximumFractionDigits: 2,
   });
   const unit = currency === "RUB" ? "рублей" : currency;
-  return `Баланс: ${amount} ${unit}`;
+  return `${amount} ${unit}`;
 }

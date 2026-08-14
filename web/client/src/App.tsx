@@ -62,8 +62,8 @@ function Layout({ children }: { children: ReactNode }) {
       user={me.data ? `${me.data.client_name} · ${me.data.email}` : undefined}
       aside={
         bal.data ? (
-          <span className="rounded-md bg-[#FBE95F] px-3 py-1.5 text-sm font-bold text-black">
-            {formatBalance(bal.data.available_balance, bal.data.currency)}
+          <span className="rounded-md bg-[#FBE95F] px-3 py-1.5 text-sm text-black">
+            Баланс: <span className="font-bold">{formatBalance(bal.data.available_balance, bal.data.currency)}</span>
           </span>
         ) : null
       }

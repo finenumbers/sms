@@ -15,33 +15,33 @@ import (
 )
 
 type settingsPatchRequest struct {
-	RunexisEmail       *string              `json:"runexis_email"`
-	RunexisPassword    *string              `json:"runexis_password"`
-	CallbackBaseURL    *string              `json:"callback_base_url"`
-	SMSDirections      *settings.Directions `json:"sms_directions"`
-	ProviderRPS        *float64             `json:"provider_rps"`
-	ClientRPSDefault   *float64             `json:"client_rps_default"`
-	RetentionDays      *int32               `json:"retention_days"`
-	AuditRetentionDays *int32               `json:"audit_retention_days"`
-	OpsRetentionDays   *int32               `json:"ops_retention_days"`
-	BillingEnforced    *bool                `json:"billing_enforced"`
-	LowBalanceThreshold        *string             `json:"low_balance_threshold"`
-	RotateIngressToken         *bool               `json:"rotate_ingress_token"`
-	LookupEnabled              *bool               `json:"lookup_enabled"`
-	LookupCheckTimeoutSec      *int32              `json:"lookup_check_timeout_sec"`
-	LookupPollIntervalSec      *int32              `json:"lookup_poll_interval_sec"`
-	LookupMaxCSVRows           *int32              `json:"lookup_max_csv_rows"`
-	LookupMaxCSVBytes          *int32              `json:"lookup_max_csv_bytes"`
-	LookupMaxBatchPhones       *int32              `json:"lookup_max_batch_phones"`
-	LookupWebhookMaxAttempts   *int32              `json:"lookup_webhook_max_attempts"`
-	LookupWebhookTimeoutMs     *int32              `json:"lookup_webhook_timeout_ms"`
-	LookupRetentionDays        *int32              `json:"lookup_retention_days"`
-	SMSCBaseURL                *string             `json:"smsc_base_url"`
-	SMSCLogin                  *string             `json:"smsc_login"`
-	SMSCPassword               *string             `json:"smsc_password"`
-	SMSCAPIKey                 *string             `json:"smsc_apikey"`
-	SMSCCallbackSecret         *string             `json:"smsc_callback_secret"`
-	SMSCCurrency               *string             `json:"smsc_currency"`
+	RunexisEmail             *string              `json:"runexis_email"`
+	RunexisPassword          *string              `json:"runexis_password"`
+	CallbackBaseURL          *string              `json:"callback_base_url"`
+	SMSDirections            *settings.Directions `json:"sms_directions"`
+	ProviderRPS              *float64             `json:"provider_rps"`
+	ClientRPSDefault         *float64             `json:"client_rps_default"`
+	RetentionDays            *int32               `json:"retention_days"`
+	AuditRetentionDays       *int32               `json:"audit_retention_days"`
+	OpsRetentionDays         *int32               `json:"ops_retention_days"`
+	BillingEnforced          *bool                `json:"billing_enforced"`
+	LowBalanceThreshold      *string              `json:"low_balance_threshold"`
+	RotateIngressToken       *bool                `json:"rotate_ingress_token"`
+	LookupEnabled            *bool                `json:"lookup_enabled"`
+	LookupCheckTimeoutSec    *int32               `json:"lookup_check_timeout_sec"`
+	LookupPollIntervalSec    *int32               `json:"lookup_poll_interval_sec"`
+	LookupMaxCSVRows         *int32               `json:"lookup_max_csv_rows"`
+	LookupMaxCSVBytes        *int32               `json:"lookup_max_csv_bytes"`
+	LookupMaxBatchPhones     *int32               `json:"lookup_max_batch_phones"`
+	LookupWebhookMaxAttempts *int32               `json:"lookup_webhook_max_attempts"`
+	LookupWebhookTimeoutMs   *int32               `json:"lookup_webhook_timeout_ms"`
+	LookupRetentionDays      *int32               `json:"lookup_retention_days"`
+	SMSCBaseURL              *string              `json:"smsc_base_url"`
+	SMSCLogin                *string              `json:"smsc_login"`
+	SMSCPassword             *string              `json:"smsc_password"`
+	SMSCAPIKey               *string              `json:"smsc_apikey"`
+	SMSCCallbackSecret       *string              `json:"smsc_callback_secret"`
+	SMSCCurrency             *string              `json:"smsc_currency"`
 }
 
 func (h *Handlers) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -75,16 +75,16 @@ func (h *Handlers) PatchSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	view, credsChanged, err := h.Settings.Update(r.Context(), settings.Patch{
-		RunexisEmail:       req.RunexisEmail,
-		RunexisPassword:    req.RunexisPassword,
-		CallbackBaseURL:    req.CallbackBaseURL,
-		SMSDirections:      req.SMSDirections,
-		ProviderRPS:        req.ProviderRPS,
-		ClientRPSDefault:   req.ClientRPSDefault,
-		RetentionDays:      req.RetentionDays,
-		AuditRetentionDays: req.AuditRetentionDays,
-		OpsRetentionDays:   req.OpsRetentionDays,
-		BillingEnforced:    req.BillingEnforced,
+		RunexisEmail:             req.RunexisEmail,
+		RunexisPassword:          req.RunexisPassword,
+		CallbackBaseURL:          req.CallbackBaseURL,
+		SMSDirections:            req.SMSDirections,
+		ProviderRPS:              req.ProviderRPS,
+		ClientRPSDefault:         req.ClientRPSDefault,
+		RetentionDays:            req.RetentionDays,
+		AuditRetentionDays:       req.AuditRetentionDays,
+		OpsRetentionDays:         req.OpsRetentionDays,
+		BillingEnforced:          req.BillingEnforced,
 		LowBalanceThreshold:      req.LowBalanceThreshold,
 		RotateIngressToken:       req.RotateIngressToken != nil && *req.RotateIngressToken,
 		LookupEnabled:            req.LookupEnabled,
@@ -241,6 +241,10 @@ func (h *Handlers) RegisterCallbacks(w http.ResponseWriter, r *http.Request) {
 	}
 	if view.CallbackBaseURL == "" {
 		httpx.WriteError(w, http.StatusConflict, "not_configured", "callback_base_url is not set")
+		return
+	}
+	if err := settings.ValidatePublicCallbackBase(view.CallbackBaseURL); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "validation", "callback_base_url must be a public https URL that Runexis can reach")
 		return
 	}
 	stored, err := h.Settings.IngressHash(r.Context())

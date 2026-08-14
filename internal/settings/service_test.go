@@ -323,3 +323,21 @@ func TestErrDecryptIsProviderNeutral(t *testing.T) {
 		t.Fatalf("ErrDecrypt must not name a provider: %q", ErrDecrypt)
 	}
 }
+
+func TestValidatePublicCallbackBase(t *testing.T) {
+	if err := ValidatePublicCallbackBase("https://api.example.com"); err != nil {
+		t.Fatal(err)
+	}
+	for _, raw := range []string{
+		"http://api.example.com",
+		"http://api.sms.localhost",
+		"https://localhost",
+		"https://127.0.0.1",
+		"https://10.0.0.5",
+		"https://api.sms.local",
+	} {
+		if err := ValidatePublicCallbackBase(raw); err == nil {
+			t.Fatalf("accepted %q", raw)
+		}
+	}
+}

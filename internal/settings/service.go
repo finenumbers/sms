@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"net/mail"
 	"net/url"
 	"strconv"
@@ -89,34 +90,34 @@ type Public struct {
 }
 
 type Patch struct {
-	RunexisEmail        *string
-	RunexisPassword     *string
-	CallbackBaseURL     *string
-	SMSDirections       *Directions
-	ProviderRPS         *float64
-	ClientRPSDefault    *float64
-	RetentionDays       *int32
-	AuditRetentionDays  *int32
-	OpsRetentionDays    *int32
-	BillingEnforced     *bool
-	LowBalanceThreshold *string
-	RotateIngressToken         bool
-	LookupEnabled              *bool
-	LookupCheckTimeoutSec      *int32
-	LookupPollIntervalSec      *int32
-	LookupMaxCSVRows           *int32
-	LookupMaxCSVBytes          *int32
-	LookupMaxBatchPhones       *int32
-	LookupWebhookMaxAttempts   *int32
-	LookupWebhookTimeoutMs     *int32
-	LookupRetentionDays        *int32
-	SMSCBaseURL                *string
-	SMSCLogin                  *string
-	SMSCPassword               *string
-	SMSCAPIKey                 *string
-	SMSCCallbackSecret         *string
-	SMSCCurrency               *string
-	UpdatedBy                  uuid.UUID
+	RunexisEmail             *string
+	RunexisPassword          *string
+	CallbackBaseURL          *string
+	SMSDirections            *Directions
+	ProviderRPS              *float64
+	ClientRPSDefault         *float64
+	RetentionDays            *int32
+	AuditRetentionDays       *int32
+	OpsRetentionDays         *int32
+	BillingEnforced          *bool
+	LowBalanceThreshold      *string
+	RotateIngressToken       bool
+	LookupEnabled            *bool
+	LookupCheckTimeoutSec    *int32
+	LookupPollIntervalSec    *int32
+	LookupMaxCSVRows         *int32
+	LookupMaxCSVBytes        *int32
+	LookupMaxBatchPhones     *int32
+	LookupWebhookMaxAttempts *int32
+	LookupWebhookTimeoutMs   *int32
+	LookupRetentionDays      *int32
+	SMSCBaseURL              *string
+	SMSCLogin                *string
+	SMSCPassword             *string
+	SMSCAPIKey               *string
+	SMSCCallbackSecret       *string
+	SMSCCurrency             *string
+	UpdatedBy                uuid.UUID
 }
 
 type Credentials struct {
@@ -375,6 +376,30 @@ func validateCallbackURL(raw string) error {
 	case "https", "http":
 	default:
 		return fmt.Errorf("%w: callback_base_url must be http or https", ErrValidation)
+	}
+	return nil
+}
+
+// ValidatePublicCallbackBase is required before PATCH dlr-url/hook-url at Runexis.
+// Saving a local http URL is still allowed; registering it is not.
+func ValidatePublicCallbackBase(raw string) error {
+	if err := validateCallbackURL(raw); err != nil {
+		return err
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("%w: invalid callback_base_url", ErrValidation)
+	}
+	if strings.ToLower(u.Scheme) != "https" {
+		return fmt.Errorf("%w: callback_base_url must be https for Runexis callbacks", ErrValidation)
+	}
+	host := strings.ToLower(u.Hostname())
+	if host == "" || host == "localhost" || host == "127.0.0.1" || host == "::1" ||
+		strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") {
+		return fmt.Errorf("%w: callback_base_url must be a public host Runexis can reach", ErrValidation)
+	}
+	if ip := net.ParseIP(host); ip != nil && (ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() || ip.IsLinkLocalUnicast()) {
+		return fmt.Errorf("%w: callback_base_url must be a public host Runexis can reach", ErrValidation)
 	}
 	return nil
 }

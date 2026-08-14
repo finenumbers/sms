@@ -121,8 +121,9 @@ export function SettingsPage() {
             />
           </Field>
           <p className="mb-3 text-xs text-zinc-500">
-            По документации: <code>{"https://api.{domain}"}</code>. От него — DLR/MO Runexis и колбэк SMSC{" "}
-            <code>/internal/smsc/callback</code>.
+            Для DLR нужен публичный <code>{"https://api.{domain}"}</code> — тот же хост, что <code>API_HOST</code> в
+            Portainer. <code>localhost</code> Runexis не достучится: исходящие тогда остаются accepted, пока statistic (~2
+            мин) не подтвердит доставку.
           </p>
           <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
             {(

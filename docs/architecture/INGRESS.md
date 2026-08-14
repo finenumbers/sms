@@ -20,7 +20,7 @@
 
 DLR с `sms_id` обновляет исходящее (`delivered` / `sent` / `failed`). MO без assignment: `client_id` NULL, в ЛК не показывается. Reconcile statistic по-прежнему подстраховывает `accepted|sent` старше порога и inbox `incoming=true`. Просмотр raw: `GET /admin/v1/callbacks`.
 
-Ротация токена: `PATCH /admin/v1/settings` с `rotate_ingress_token: true` — plaintext один раз в ответе, в БД только hash. Регистрация URL: `POST /admin/v1/settings/runexis/callbacks` с тем же токеном → `PATCH` глобальных `dlr-url` и `hook-url`.
+Ротация токена: `PATCH /admin/v1/settings` с `rotate_ingress_token: true` — plaintext один раз в ответе, в БД только hash. Регистрация URL: `POST /admin/v1/settings/runexis/callbacks` с тем же токеном → `PATCH` глобальных `dlr-url` и `hook-url`. Регистрация отклоняет `localhost` / http / частные IP — Runexis должен достучаться до `https://{API_HOST}`.
 
 Lifecycle `/api/v1/webhooks` Runexis в v1 не подключаем. Исходящие вебхуки **проверок** (HLR/Ping) — [`WEBHOOKS.md`](WEBHOOKS.md).
 

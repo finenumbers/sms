@@ -243,6 +243,19 @@ WHERE provider_code = sqlc.arg(provider_code)
   AND provider_message_id = sqlc.arg(provider_message_id)
 ORDER BY created_at, id;
 
+-- name: ListOpenLookupItemsForCallbackPhone :many
+SELECT *
+FROM lookup_items
+WHERE phone_digits = sqlc.arg(phone_digits)
+  AND status IN ('queued', 'reserved', 'pending')
+  AND created_at >= sqlc.arg(created_after)
+  AND (
+    provider_message_id IS NULL
+    OR provider_message_id = ''
+    OR provider_message_id = sqlc.arg(provider_message_id)
+  )
+ORDER BY created_at, id;
+
 -- name: ListUnprocessedProviderLookupCallbacks :many
 SELECT *
 FROM provider_lookup_callbacks

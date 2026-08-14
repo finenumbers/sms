@@ -2017,6 +2017,82 @@ func (q *Queries) ListLookupJobs(ctx context.Context, arg ListLookupJobsParams) 
 	return items, nil
 }
 
+const listOpenLookupItemsForCallbackPhone = `-- name: ListOpenLookupItemsForCallbackPhone :many
+SELECT id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
+FROM lookup_items
+WHERE phone_digits = $1
+  AND status IN ('queued', 'reserved', 'pending')
+  AND created_at >= $2
+  AND (
+    provider_message_id IS NULL
+    OR provider_message_id = ''
+    OR provider_message_id = $3
+  )
+ORDER BY created_at, id
+`
+
+type ListOpenLookupItemsForCallbackPhoneParams struct {
+	PhoneDigits       string    `json:"phone_digits"`
+	CreatedAfter      time.Time `json:"created_after"`
+	ProviderMessageID *string   `json:"provider_message_id"`
+}
+
+func (q *Queries) ListOpenLookupItemsForCallbackPhone(ctx context.Context, arg ListOpenLookupItemsForCallbackPhoneParams) ([]LookupItem, error) {
+	rows, err := q.db.Query(ctx, listOpenLookupItemsForCallbackPhone, arg.PhoneDigits, arg.CreatedAfter, arg.ProviderMessageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LookupItem
+	for rows.Next() {
+		var i LookupItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.JobID,
+			&i.ClientID,
+			&i.CheckType,
+			&i.Status,
+			&i.PhoneE164,
+			&i.PhoneDigits,
+			&i.ProviderCode,
+			&i.ProviderMessageID,
+			&i.UnitSellPrice,
+			&i.TariffPlanID,
+			&i.TariffPlanCode,
+			&i.Currency,
+			&i.EstimatedCost,
+			&i.ActualCost,
+			&i.ResultStatus,
+			&i.IsReachable,
+			&i.Imsi,
+			&i.Mcc,
+			&i.Mnc,
+			&i.OperatorName,
+			&i.CountryCode,
+			&i.Ported,
+			&i.Roaming,
+			&i.NormalizedResult,
+			&i.ErrorCode,
+			&i.ErrorMessage,
+			&i.BillingAction,
+			&i.NextPollAt,
+			&i.PollAttempts,
+			&i.SentAt,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.EnrichAttempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQueuedLookupItemIDs = `-- name: ListQueuedLookupItemIDs :many
 SELECT id
 FROM lookup_items

@@ -26,7 +26,7 @@ const (
 	fairClients     = 8
 	tickBudget      = 150 * time.Millisecond
 	minHTTPBudget   = 20 * time.Millisecond
-	smscCallTimeout = 3 * time.Second
+	smscCallTimeout = smsc.DefaultHTTPTimeout
 	reconcileEvery  = 15 * time.Second
 	csvShellAge     = 5 * time.Minute
 	// Must outlive Create's statement_timeout. Heal-to-ready while Create

@@ -9,7 +9,8 @@ import (
 const (
 	DefaultBaseURL        = "https://smsc.ru"
 	defaultCurrency       = "RUB"
-	defaultTimeout        = 15 * time.Second
+	DefaultHTTPTimeout    = 15 * time.Second
+	defaultTimeout        = DefaultHTTPTimeout
 	defaultRetryMax       = 2
 	defaultRetryBaseDelay = 200 * time.Millisecond
 )

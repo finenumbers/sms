@@ -27,6 +27,29 @@ func TestApplyIncomingEmptyIDIsNotFound(t *testing.T) {
 	}
 }
 
+func TestPickCallbackItemsPrefersProviderID(t *testing.T) {
+	byID := []sqlcdb.LookupItem{{PhoneDigits: "79991111111"}}
+	byPhone := []sqlcdb.LookupItem{{PhoneDigits: "79992222222"}}
+	got, reason := pickCallbackItems(byID, byPhone)
+	if reason != "" || got.PhoneDigits != "79991111111" {
+		t.Fatalf("%#v %s", got, reason)
+	}
+}
+
+func TestPickCallbackItemsPhoneFallback(t *testing.T) {
+	got, reason := pickCallbackItems(nil, []sqlcdb.LookupItem{{PhoneDigits: "79994504444"}})
+	if reason != "" || got.PhoneDigits != "79994504444" {
+		t.Fatalf("%#v %s", got, reason)
+	}
+}
+
+func TestPickCallbackItemsAmbiguousPhone(t *testing.T) {
+	_, reason := pickCallbackItems(nil, []sqlcdb.LookupItem{{}, {}})
+	if reason != "ambiguous" {
+		t.Fatalf("reason=%s", reason)
+	}
+}
+
 func TestIncomingSkipEnrichLeavesApplyInput(t *testing.T) {
 	in := ApplyInput{SkipEnrich: true, Normalized: smsc.NormalizedResult{CheckType: smsc.CheckHLR}}
 	if !in.SkipEnrich {

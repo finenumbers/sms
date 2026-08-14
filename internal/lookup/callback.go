@@ -36,24 +36,56 @@ func callbackPhonesMatch(itemDigits, callbackDigits string) bool {
 	return itemDigits == callbackDigits
 }
 
+func pickCallbackItems(byID, byPhone []sqlcdb.LookupItem) (sqlcdb.LookupItem, string) {
+	switch {
+	case len(byID) > 1:
+		return sqlcdb.LookupItem{}, "ambiguous"
+	case len(byID) == 1:
+		return byID[0], ""
+	case len(byPhone) > 1:
+		return sqlcdb.LookupItem{}, "ambiguous"
+	case len(byPhone) == 1:
+		return byPhone[0], ""
+	default:
+		return sqlcdb.LookupItem{}, "not_found"
+	}
+}
+
 func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (IncomingResult, error) {
-	if w == nil || w.store == nil || in.ProviderMessageID == "" {
+	if w == nil || w.store == nil || (in.ProviderMessageID == "" && in.PhoneDigits == "") {
 		return IncomingResult{Reason: "not_found"}, nil
 	}
-	items, err := w.store.Queries.ListLookupItemsByProviderMessage(ctx, sqlcdb.ListLookupItemsByProviderMessageParams{
-		ProviderCode:      smsc.ProviderCode,
-		ProviderMessageID: &in.ProviderMessageID,
-	})
-	if err != nil {
-		return IncomingResult{}, err
+	var byID []sqlcdb.LookupItem
+	if in.ProviderMessageID != "" {
+		rows, err := w.store.Queries.ListLookupItemsByProviderMessage(ctx, sqlcdb.ListLookupItemsByProviderMessageParams{
+			ProviderCode:      smsc.ProviderCode,
+			ProviderMessageID: &in.ProviderMessageID,
+		})
+		if err != nil {
+			return IncomingResult{}, err
+		}
+		byID = rows
 	}
-	if len(items) == 0 {
-		return IncomingResult{Reason: "not_found"}, nil
+	var byPhone []sqlcdb.LookupItem
+	if len(byID) == 0 && in.PhoneDigits != "" {
+		now := time.Now().UTC()
+		if w.now != nil {
+			now = w.now()
+		}
+		rows, err := w.store.Queries.ListOpenLookupItemsForCallbackPhone(ctx, sqlcdb.ListOpenLookupItemsForCallbackPhoneParams{
+			PhoneDigits:       in.PhoneDigits,
+			CreatedAfter:      now.Add(-callbackNotFoundTTL),
+			ProviderMessageID: &in.ProviderMessageID,
+		})
+		if err != nil {
+			return IncomingResult{}, err
+		}
+		byPhone = rows
 	}
-	if len(items) > 1 {
-		return IncomingResult{Reason: "ambiguous"}, nil
+	item, reason := pickCallbackItems(byID, byPhone)
+	if reason != "" {
+		return IncomingResult{Reason: reason}, nil
 	}
-	item := items[0]
 	if !callbackPhonesMatch(item.PhoneDigits, in.PhoneDigits) {
 		return IncomingResult{Reason: "phone_mismatch", Item: item}, nil
 	}

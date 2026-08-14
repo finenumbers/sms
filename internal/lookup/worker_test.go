@@ -62,6 +62,15 @@ func TestCanStartLookupIO(t *testing.T) {
 	}
 }
 
+func TestLookupIOContextUsesAdapterTimeout(t *testing.T) {
+	if smscCallTimeout != smsc.DefaultHTTPTimeout {
+		t.Fatalf("submit must use SMSC adapter timeout, got %s", smscCallTimeout)
+	}
+	if smscCallTimeout != 15*time.Second {
+		t.Fatalf("submit must wait 15s for SMSC, got %s", smscCallTimeout)
+	}
+}
+
 func TestLookupIOContextCapsWorkerCallsOnly(t *testing.T) {
 	parent, cancel := context.WithCancel(context.Background())
 	defer cancel()

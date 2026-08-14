@@ -37,7 +37,9 @@ CI пушит в GHCR **только при GitHub Release**. Теги: `vX.Y.Z`
 
 1. Сеть `proxy` уже есть (в ней NPM). Имя сверить в Portainer, не угадывать.
 2. Stacks → Add stack. Имя `finenumbers`.
-3. Web editor: вставить содержимое [`docker-compose.portainer.yml`](../../deploy/compose/docker-compose.portainer.yml) **с GitHub** (ветка/тег релиза), не собирать Dockerfile на VM.
+3. Стек из GitHub (предпочтительно) **или** Web editor. Образ на VM не собирать.
+   - **Repository:** `https://github.com/finenumbers/sms`, ветка `main` или тег `v1.0.0`. **Compose path** (от корня репо, не имя файла): `deploy/compose/docker-compose.portainer.yml`. Путь `docker-compose.portainer.yml` в корне не существует — Portainer тогда пишет `no such file or directory`.
+   - **Web editor:** вставить содержимое [`docker-compose.portainer.yml`](../../deploy/compose/docker-compose.portainer.yml) с GitHub. Имя файла в редакторе не задавать.
 4. Environment variables — пять обязательных из таблицы. Порты стека не публиковать.
 5. Deploy. Дождаться `migrate` (exit 0), затем `api` и `worker`.
 6. Контейнер API: `finenumbers-api`, одна replica, слушает `:8080` на `proxy`.

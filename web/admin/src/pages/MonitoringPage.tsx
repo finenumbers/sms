@@ -173,6 +173,8 @@ export function MonitoringPage() {
           <thead>
             <tr>
               <Th>Время</Th>
+              <Th>id</Th>
+              <Th>Телефон</Th>
               <Th>Подпись</Th>
               <Th>Обработан</Th>
               <Th>Ошибка</Th>
@@ -182,6 +184,8 @@ export function MonitoringPage() {
             {(mon.data?.recent_callbacks ?? []).map((row) => (
               <tr key={row.id}>
                 <Td>{row.created_at}</Td>
+                <Td>{row.provider_message_id ?? "—"}</Td>
+                <Td>{row.phone ?? "—"}</Td>
                 <Td>
                   <Badge tone={row.signature_valid ? "green" : "red"}>{yn(row.signature_valid)}</Badge>
                 </Td>

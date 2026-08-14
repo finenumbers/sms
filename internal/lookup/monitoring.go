@@ -48,10 +48,15 @@ func (s *Service) Monitoring(ctx context.Context, provider *smsc.Provider) (map[
 	}
 	recentCb := make([]map[string]any, 0, len(cbs))
 	for _, row := range cbs {
+		phone := ""
+		if obj, ok := rawObject(row.RawPayload); ok {
+			phone = CallbackPhoneDigits(smsc.CallbackPhoneRaw(obj))
+		}
 		recentCb = append(recentCb, map[string]any{
 			"id":                  row.ID,
 			"provider_code":       row.ProviderCode,
 			"provider_message_id": row.ProviderMessageID,
+			"phone":               phone,
 			"signature_valid":     row.SignatureValid,
 			"processed_at":        formatTimePtr(row.ProcessedAt),
 			"process_error":       row.ProcessError,

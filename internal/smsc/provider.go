@@ -202,10 +202,7 @@ func (p *Provider) HandleCallback(ctx context.Context, in CallbackInput) (Callba
 		}
 	}
 
-	phone := ""
-	if payload["phone"] != nil {
-		phone = "+" + ToPhoneDigits(asString(payload["phone"]))
-	}
+	phone := CanonicalPhoneE164(CallbackPhoneRaw(payload))
 	normalized := p.MapResponse(MapResponseInput{
 		CheckType:         checkType,
 		Raw:               payload,

@@ -25,6 +25,12 @@ func TestCallbackPhoneDigitsNormalizesRU(t *testing.T) {
 	if got := CallbackPhoneDigits("89139447008"); got != "79139447008" {
 		t.Fatalf("8→7: %s", got)
 	}
+	if got := CallbackPhoneDigits("+89139447008"); got != "79139447008" {
+		t.Fatalf("+8→7: %s", got)
+	}
+	if got := CallbackPhoneDigits("9139447008"); got != "79139447008" {
+		t.Fatalf("10-digit 9: %s", got)
+	}
 	if got := CallbackPhoneDigits("+7 913 944-70-08"); got != "79139447008" {
 		t.Fatalf("spaces: %s", got)
 	}
@@ -33,6 +39,15 @@ func TestCallbackPhoneDigitsNormalizesRU(t *testing.T) {
 	}
 	if CallbackPhoneDigits("") != "" {
 		t.Fatal("empty")
+	}
+}
+
+func TestCallbackPhonesMatchLast10(t *testing.T) {
+	if !callbackPhonesMatch("79607977373", "9607977373") {
+		t.Fatal("last-10 must match RU mobile without country code")
+	}
+	if callbackPhonesMatch("79607977373", "9607977374") {
+		t.Fatal("different tail")
 	}
 }
 
@@ -126,6 +141,18 @@ func TestIncomingFromStoredSkipsEnrichAndPrefersNormalizedPhone(t *testing.T) {
 	}
 	if in.Normalized.LifecycleStatus != smsc.LifecycleCompleted {
 		t.Fatalf("lifecycle=%s", in.Normalized.LifecycleStatus)
+	}
+}
+
+func TestIncomingFromStoredPhonesField(t *testing.T) {
+	in := incomingFromStored(sqlcdb.ProviderLookupCallback{
+		RawPayload: []byte(`{"phones":"+89607977373","id":99}`),
+	})
+	if in.PhoneDigits != "79607977373" {
+		t.Fatalf("phones +8: %s", in.PhoneDigits)
+	}
+	if in.ProviderMessageID != "99" {
+		t.Fatalf("id=%s", in.ProviderMessageID)
 	}
 }
 

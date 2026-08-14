@@ -251,6 +251,7 @@ export type LookupRecentCallback = {
   id: string;
   provider_code: string;
   provider_message_id?: string | null;
+  phone?: string | null;
   signature_valid?: boolean | null;
   processed_at?: string | null;
   process_error?: string | null;

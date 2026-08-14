@@ -256,6 +256,32 @@ WHERE phone_digits = sqlc.arg(phone_digits)
   )
 ORDER BY created_at, id;
 
+-- name: ListOpenLookupItemsForCallbackPhoneTail :many
+SELECT *
+FROM lookup_items
+WHERE right(phone_digits, 10) = sqlc.arg(phone_tail)
+  AND status IN ('queued', 'reserved', 'pending')
+  AND created_at >= sqlc.arg(created_after)
+  AND (
+    provider_message_id IS NULL
+    OR provider_message_id = ''
+    OR provider_message_id = sqlc.arg(provider_message_id)
+  )
+ORDER BY created_at, id;
+
+-- name: ListOpenLookupItemsForCallbackSendID :many
+SELECT i.*
+FROM provider_lookup_requests r
+JOIN lookup_items i ON i.id = r.job_item_id
+WHERE r.kind = 'send'
+  AND r.created_at >= sqlc.arg(created_after)
+  AND i.status IN ('queued', 'reserved', 'pending')
+  AND (
+    r.provider_message_id = sqlc.arg(callback_id)
+    OR r.request_payload->>'id' = sqlc.arg(callback_id)
+  )
+ORDER BY i.created_at, i.id;
+
 -- name: ListUnprocessedProviderLookupCallbacks :many
 SELECT *
 FROM provider_lookup_callbacks

@@ -36,7 +36,19 @@ func callbackPhonesMatch(itemDigits, callbackDigits string) bool {
 	if callbackDigits == "" {
 		return true
 	}
-	return itemDigits == callbackDigits
+	a := CallbackPhoneDigits(itemDigits)
+	b := CallbackPhoneDigits(callbackDigits)
+	if a == b {
+		return true
+	}
+	return phoneTail(a) != "" && phoneTail(a) == phoneTail(b)
+}
+
+func phoneTail(digits string) string {
+	if len(digits) < 10 {
+		return ""
+	}
+	return digits[len(digits)-10:]
 }
 
 func pickCallbackItems(byID, byPhone []sqlcdb.LookupItem) (sqlcdb.LookupItem, string) {
@@ -57,14 +69,7 @@ func pickCallbackItems(byID, byPhone []sqlcdb.LookupItem) (sqlcdb.LookupItem, st
 // CallbackPhoneDigits normalizes a callback phone the same way create stores
 // lookup_items.phone_digits (digits only, RU 8→7 / 9XXXXXXXXX→79).
 func CallbackPhoneDigits(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	e164, err := NormalizePhoneE164(raw)
-	if err != nil {
-		return PhoneDigits(raw)
-	}
-	return PhoneDigits(e164)
+	return smsc.CanonicalPhoneDigits(raw)
 }
 
 // ShouldConcludeCallback is true only when the item was actually updated.
@@ -86,10 +91,15 @@ func shouldMarkStoredCallback(res IncomingResult, age time.Duration) bool {
 	return false
 }
 
-func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (IncomingResult, error) {
-	if w == nil || w.store == nil || (in.ProviderMessageID == "" && in.PhoneDigits == "") {
-		return IncomingResult{Reason: "not_found"}, nil
+func (w *Worker) callbackCreatedAfter() time.Time {
+	now := time.Now().UTC()
+	if w != nil && w.now != nil {
+		now = w.now()
 	}
+	return now.Add(-callbackNotFoundTTL)
+}
+
+func (w *Worker) lookupCallbackItems(ctx context.Context, in IncomingCallback) ([]sqlcdb.LookupItem, []sqlcdb.LookupItem, error) {
 	var byID []sqlcdb.LookupItem
 	if in.ProviderMessageID != "" {
 		rows, err := w.store.Queries.ListLookupItemsByProviderMessage(ctx, sqlcdb.ListLookupItemsByProviderMessageParams{
@@ -97,25 +107,57 @@ func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (Incomi
 			ProviderMessageID: &in.ProviderMessageID,
 		})
 		if err != nil {
-			return IncomingResult{}, err
+			return nil, nil, err
 		}
 		byID = rows
+		if len(byID) == 0 {
+			callbackID := in.ProviderMessageID
+			rows, err = w.store.Queries.ListOpenLookupItemsForCallbackSendID(ctx, sqlcdb.ListOpenLookupItemsForCallbackSendIDParams{
+				CreatedAfter: w.callbackCreatedAfter(),
+				CallbackID:   &callbackID,
+			})
+			if err != nil {
+				return nil, nil, err
+			}
+			byID = rows
+		}
 	}
 	var byPhone []sqlcdb.LookupItem
 	if len(byID) == 0 && in.PhoneDigits != "" {
-		now := time.Now().UTC()
-		if w.now != nil {
-			now = w.now()
-		}
+		canon := CallbackPhoneDigits(in.PhoneDigits)
 		rows, err := w.store.Queries.ListOpenLookupItemsForCallbackPhone(ctx, sqlcdb.ListOpenLookupItemsForCallbackPhoneParams{
-			PhoneDigits:       in.PhoneDigits,
-			CreatedAfter:      now.Add(-callbackNotFoundTTL),
+			PhoneDigits:       canon,
+			CreatedAfter:      w.callbackCreatedAfter(),
 			ProviderMessageID: &in.ProviderMessageID,
 		})
 		if err != nil {
-			return IncomingResult{}, err
+			return nil, nil, err
 		}
 		byPhone = rows
+		if len(byPhone) == 0 {
+			if tail := phoneTail(canon); tail != "" {
+				rows, err = w.store.Queries.ListOpenLookupItemsForCallbackPhoneTail(ctx, sqlcdb.ListOpenLookupItemsForCallbackPhoneTailParams{
+					PhoneTail:         tail,
+					CreatedAfter:      w.callbackCreatedAfter(),
+					ProviderMessageID: &in.ProviderMessageID,
+				})
+				if err != nil {
+					return nil, nil, err
+				}
+				byPhone = rows
+			}
+		}
+	}
+	return byID, byPhone, nil
+}
+
+func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (IncomingResult, error) {
+	if w == nil || w.store == nil || (in.ProviderMessageID == "" && in.PhoneDigits == "") {
+		return IncomingResult{Reason: "not_found"}, nil
+	}
+	byID, byPhone, err := w.lookupCallbackItems(ctx, in)
+	if err != nil {
+		return IncomingResult{}, err
 	}
 	item, reason := pickCallbackItems(byID, byPhone)
 	if reason != "" {
@@ -210,7 +252,7 @@ func incomingFromStored(row sqlcdb.ProviderLookupCallback) IncomingCallback {
 	phone := CallbackPhoneDigits(normalized.PhoneE164)
 	if obj, ok := rawObject(row.RawPayload); ok {
 		if phone == "" {
-			phone = CallbackPhoneDigits(asCallbackPhone(obj))
+			phone = CallbackPhoneDigits(smsc.CallbackPhoneRaw(obj))
 		}
 		if id == "" {
 			id = asStringAny(obj["id"])
@@ -270,16 +312,6 @@ func rawObject(raw []byte) (map[string]any, bool) {
 		return nil, false
 	}
 	return m, true
-}
-
-func asCallbackPhone(obj map[string]any) string {
-	if obj == nil {
-		return ""
-	}
-	if v, ok := obj["phone"]; ok {
-		return asStringAny(v)
-	}
-	return ""
 }
 
 func asStringAny(v any) string {

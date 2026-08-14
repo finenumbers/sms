@@ -2093,6 +2093,157 @@ func (q *Queries) ListOpenLookupItemsForCallbackPhone(ctx context.Context, arg L
 	return items, nil
 }
 
+const listOpenLookupItemsForCallbackPhoneTail = `-- name: ListOpenLookupItemsForCallbackPhoneTail :many
+SELECT id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
+FROM lookup_items
+WHERE right(phone_digits, 10) = $1
+  AND status IN ('queued', 'reserved', 'pending')
+  AND created_at >= $2
+  AND (
+    provider_message_id IS NULL
+    OR provider_message_id = ''
+    OR provider_message_id = $3
+  )
+ORDER BY created_at, id
+`
+
+type ListOpenLookupItemsForCallbackPhoneTailParams struct {
+	PhoneTail         string    `json:"phone_tail"`
+	CreatedAfter      time.Time `json:"created_after"`
+	ProviderMessageID *string   `json:"provider_message_id"`
+}
+
+func (q *Queries) ListOpenLookupItemsForCallbackPhoneTail(ctx context.Context, arg ListOpenLookupItemsForCallbackPhoneTailParams) ([]LookupItem, error) {
+	rows, err := q.db.Query(ctx, listOpenLookupItemsForCallbackPhoneTail, arg.PhoneTail, arg.CreatedAfter, arg.ProviderMessageID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LookupItem
+	for rows.Next() {
+		var i LookupItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.JobID,
+			&i.ClientID,
+			&i.CheckType,
+			&i.Status,
+			&i.PhoneE164,
+			&i.PhoneDigits,
+			&i.ProviderCode,
+			&i.ProviderMessageID,
+			&i.UnitSellPrice,
+			&i.TariffPlanID,
+			&i.TariffPlanCode,
+			&i.Currency,
+			&i.EstimatedCost,
+			&i.ActualCost,
+			&i.ResultStatus,
+			&i.IsReachable,
+			&i.Imsi,
+			&i.Mcc,
+			&i.Mnc,
+			&i.OperatorName,
+			&i.CountryCode,
+			&i.Ported,
+			&i.Roaming,
+			&i.NormalizedResult,
+			&i.ErrorCode,
+			&i.ErrorMessage,
+			&i.BillingAction,
+			&i.NextPollAt,
+			&i.PollAttempts,
+			&i.SentAt,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.EnrichAttempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOpenLookupItemsForCallbackSendID = `-- name: ListOpenLookupItemsForCallbackSendID :many
+SELECT i.id, i.job_id, i.client_id, i.check_type, i.status, i.phone_e164, i.phone_digits, i.provider_code, i.provider_message_id, i.unit_sell_price, i.tariff_plan_id, i.tariff_plan_code, i.currency, i.estimated_cost, i.actual_cost, i.result_status, i.is_reachable, i.imsi, i.mcc, i.mnc, i.operator_name, i.country_code, i.ported, i.roaming, i.normalized_result, i.error_code, i.error_message, i.billing_action, i.next_poll_at, i.poll_attempts, i.sent_at, i.completed_at, i.created_at, i.updated_at, i.enrich_attempts
+FROM provider_lookup_requests r
+JOIN lookup_items i ON i.id = r.job_item_id
+WHERE r.kind = 'send'
+  AND r.created_at >= $1
+  AND i.status IN ('queued', 'reserved', 'pending')
+  AND (
+    r.provider_message_id = $2
+    OR r.request_payload->>'id' = $2
+  )
+ORDER BY i.created_at, i.id
+`
+
+type ListOpenLookupItemsForCallbackSendIDParams struct {
+	CreatedAfter time.Time `json:"created_after"`
+	CallbackID   *string   `json:"callback_id"`
+}
+
+func (q *Queries) ListOpenLookupItemsForCallbackSendID(ctx context.Context, arg ListOpenLookupItemsForCallbackSendIDParams) ([]LookupItem, error) {
+	rows, err := q.db.Query(ctx, listOpenLookupItemsForCallbackSendID, arg.CreatedAfter, arg.CallbackID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LookupItem
+	for rows.Next() {
+		var i LookupItem
+		if err := rows.Scan(
+			&i.ID,
+			&i.JobID,
+			&i.ClientID,
+			&i.CheckType,
+			&i.Status,
+			&i.PhoneE164,
+			&i.PhoneDigits,
+			&i.ProviderCode,
+			&i.ProviderMessageID,
+			&i.UnitSellPrice,
+			&i.TariffPlanID,
+			&i.TariffPlanCode,
+			&i.Currency,
+			&i.EstimatedCost,
+			&i.ActualCost,
+			&i.ResultStatus,
+			&i.IsReachable,
+			&i.Imsi,
+			&i.Mcc,
+			&i.Mnc,
+			&i.OperatorName,
+			&i.CountryCode,
+			&i.Ported,
+			&i.Roaming,
+			&i.NormalizedResult,
+			&i.ErrorCode,
+			&i.ErrorMessage,
+			&i.BillingAction,
+			&i.NextPollAt,
+			&i.PollAttempts,
+			&i.SentAt,
+			&i.CompletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.EnrichAttempts,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listQueuedLookupItemIDs = `-- name: ListQueuedLookupItemIDs :many
 SELECT id
 FROM lookup_items

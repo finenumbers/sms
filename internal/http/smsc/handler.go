@@ -107,6 +107,19 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if h.Ops != nil {
+		summary := "smsc callback applied=false"
+		if applied {
+			summary = "smsc callback applied=true"
+		}
+		if reason != "" {
+			summary += " reason=" + reason
+		}
+		if result.ProviderMessageID != "" {
+			summary += " id=" + result.ProviderMessageID
+		}
+		if phoneDigits != "" {
+			summary += " phone=" + phoneDigits
+		}
 		h.Ops.Write(r.Context(), ops.Event{
 			Category:   ops.CategoryIngress,
 			Level:      ops.LevelInfo,
@@ -114,13 +127,14 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 			HTTPMethod: r.Method,
 			HTTPPath:   "/internal/smsc/callback",
 			HTTPStatus: http.StatusOK,
-			Summary:    "smsc callback",
+			Summary:    summary,
 			Detail: map[string]any{
 				"applied":    applied,
 				"duplicate":  duplicate,
 				"reason":     reason,
 				"deduped":    result.Deduplicated,
 				"message_id": result.ProviderMessageID,
+				"phone":      phoneDigits,
 			},
 		})
 	}

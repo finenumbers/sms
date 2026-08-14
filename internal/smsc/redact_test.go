@@ -26,3 +26,18 @@ func TestToPhoneDigits(t *testing.T) {
 		t.Fatal(ToPhoneDigits("+79991234567"))
 	}
 }
+
+func TestCanonicalPhoneDigits(t *testing.T) {
+	if CanonicalPhoneDigits("+89139447008") != "79139447008" {
+		t.Fatal(CanonicalPhoneDigits("+89139447008"))
+	}
+	if CanonicalPhoneDigits("9139447008") != "79139447008" {
+		t.Fatal(CanonicalPhoneDigits("9139447008"))
+	}
+	if CanonicalPhoneE164("89607977373") != "+79607977373" {
+		t.Fatal(CanonicalPhoneE164("89607977373"))
+	}
+	if CallbackPhoneRaw(map[string]any{"phones": "79607977373"}) != "79607977373" {
+		t.Fatal("phones fallback")
+	}
+}

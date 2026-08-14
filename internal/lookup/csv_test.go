@@ -80,6 +80,17 @@ func TestExportHeadersAndRow(t *testing.T) {
 	}
 }
 
+func TestPreviewJSONStats(t *testing.T) {
+	row := sqlcdb.LookupCsvPreview{
+		PhoneCount: 2,
+		PhonesJson: []byte(`{"phones":["+79001111111","+79002222222"],"row_count":4,"invalid_count":0,"duplicate_count":2}`),
+	}
+	got := PreviewJSON(row)
+	if got["row_count"] != 4 || got["duplicate_count"] != 2 || got["invalid_count"] != 0 || got["phone_count"] != int32(2) {
+		t.Fatalf("%#v", got)
+	}
+}
+
 func TestPagePreviewPhones(t *testing.T) {
 	phones := []string{"a", "b", "c"}
 	items, total := pagePreviewPhones(phones, 2, 0)

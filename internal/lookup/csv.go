@@ -89,11 +89,17 @@ func (s *Service) CreateCSVPreview(ctx context.Context, in CSVPreviewInput) (sql
 	if !utf8.Valid(in.Body) {
 		return sqlcdb.LookupCsvPreview{}, wrap(ErrValidation, "validation", "CSV must be UTF-8")
 	}
-	phones, _, err := PreparePhones(ParseCSVPhones(in.Body), "bulk", int(view.LookupMaxCSVRows), "max_csv_rows")
+	rawPhones := ParseCSVPhones(in.Body)
+	phones, deduped, err := PreparePhones(rawPhones, "bulk", int(view.LookupMaxCSVRows), "max_csv_rows")
 	if err != nil {
 		return sqlcdb.LookupCsvPreview{}, err
 	}
-	payload, _ := json.Marshal(map[string]any{"phones": phones})
+	payload, _ := json.Marshal(map[string]any{
+		"phones":          phones,
+		"row_count":       len(rawPhones),
+		"invalid_count":   0,
+		"duplicate_count": deduped,
+	})
 	name := strings.TrimSpace(in.Filename)
 	var fname *string
 	if name != "" {

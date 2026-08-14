@@ -117,6 +117,9 @@ export type LookupPreview = {
   type: LookupCheckType;
   status: string;
   phone_count: number;
+  row_count?: number;
+  invalid_count?: number;
+  duplicate_count?: number;
   original_filename?: string;
   error_message?: string;
   job_id?: string;

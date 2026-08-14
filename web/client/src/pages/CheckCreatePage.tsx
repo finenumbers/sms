@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Alert,
@@ -9,7 +9,6 @@ import {
   INFINITE_PAGE_SIZE,
   InfiniteSentinel,
   PageHeader,
-  Table,
   Td,
   Textarea,
   Th,
@@ -21,12 +20,17 @@ import { lookupError, parsePhoneList, typeLabel } from "../lookup";
 
 type PreviewPhone = { phone: string; line: number };
 
-function PreviewPhonesTable({ previewID }: { previewID: string }) {
+function PreviewPhonesTable({ preview }: { preview: LookupPreview }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [root, setRoot] = useState<Element | null>(null);
+  useEffect(() => {
+    setRoot(scrollRef.current);
+  }, []);
   const q = useInfiniteQuery({
-    queryKey: ["lookup-preview-phones", previewID],
+    queryKey: ["lookup-preview-phones", preview.id],
     queryFn: ({ pageParam }) =>
       api.get<{ items: PreviewPhone[]; total: number }>(
-        withPage(`/lookups/csv-previews/${previewID}/phones`, pageParam, {}, INFINITE_PAGE_SIZE),
+        withPage(`/lookups/csv-previews/${preview.id}/phones`, pageParam, {}, INFINITE_PAGE_SIZE),
       ),
     initialPageParam: 0,
     getNextPageParam: (last, _pages, lastParam) => {
@@ -35,32 +39,49 @@ function PreviewPhonesTable({ previewID }: { previewID: string }) {
     },
   });
   const rows = q.data?.pages.flatMap((p) => p.items) ?? [];
-  const total = q.data?.pages[0]?.total ?? 0;
+  const total = q.data?.pages[0]?.total ?? preview.phone_count;
+  const rowsCount = preview.row_count ?? preview.phone_count;
+  const valid = preview.phone_count;
+  const invalid = preview.invalid_count ?? 0;
+  const duplicates = preview.duplicate_count ?? 0;
   return (
     <div className="mb-4">
-      <p className="mb-2 text-xs text-zinc-500">
-        {total} номеров в файле
+      <h2 className="mb-1 text-base font-semibold">Подготовленное задание</h2>
+      <p className="mb-2 text-sm text-zinc-500">
+        Строк: {rowsCount} · валидных: {valid} · невалидных: {invalid} · дублей: {duplicates}
         {q.isFetchingNextPage ? " · загрузка…" : null}
       </p>
-      <Table>
-        <thead>
-          <tr>
-            <Th>№</Th>
-            <Th>Номер</Th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={`${row.line}-${row.phone}`}>
-              <Td>{row.line}</Td>
-              <Td>
-                <code>{row.phone}</code>
-              </Td>
+      <div
+        ref={scrollRef}
+        className="max-h-[calc(13*(1.25rem+0.25rem+1px))] overflow-y-auto rounded-lg border border-zinc-200 bg-white"
+      >
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr>
+              <Th fit>№</Th>
+              <Th>Номер</Th>
             </tr>
-          ))}
-        </tbody>
-      </Table>
-      <InfiniteSentinel disabled={!q.hasNextPage || q.isFetchingNextPage} onVisible={() => void q.fetchNextPage()} />
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.line}-${row.phone}`}>
+                <Td fit>{row.line}</Td>
+                <Td>
+                  <code>{row.phone}</code>
+                </Td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <InfiniteSentinel
+          root={root}
+          disabled={!q.hasNextPage || q.isFetchingNextPage || !root}
+          onVisible={() => void q.fetchNextPage()}
+        />
+      </div>
+      <p className="mt-2 text-sm text-zinc-500">
+        Показано {rows.length} из {total}
+      </p>
     </div>
   );
 }
@@ -177,7 +198,7 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
             {upload.isPending ? <span className="mt-2 block text-xs text-zinc-500">загрузка…</span> : null}
           </button>
         </Field>
-        {preview ? <PreviewPhonesTable previewID={preview.id} /> : null}
+        {preview ? <PreviewPhonesTable preview={preview} /> : null}
         <p className="my-4 text-center text-xs text-zinc-500">или вставьте номера</p>
         <Field label="Номера (E.164, по одному в строке или через запятую)">
           <Textarea

@@ -1,6 +1,7 @@
 package lookup
 
 import (
+	"encoding/json"
 	"time"
 
 	"finenumbers/sms/internal/billing"
@@ -124,11 +125,29 @@ func CheckJSON(item sqlcdb.LookupItem) map[string]any {
 }
 
 func PreviewJSON(row sqlcdb.LookupCsvPreview) map[string]any {
+	rowCount := int(row.PhoneCount)
+	invalidCount := 0
+	duplicateCount := 0
+	var stats struct {
+		RowCount       int `json:"row_count"`
+		InvalidCount   int `json:"invalid_count"`
+		DuplicateCount int `json:"duplicate_count"`
+	}
+	if json.Unmarshal(row.PhonesJson, &stats) == nil {
+		if stats.RowCount > 0 {
+			rowCount = stats.RowCount
+		}
+		invalidCount = stats.InvalidCount
+		duplicateCount = stats.DuplicateCount
+	}
 	return map[string]any{
 		"id":                row.ID,
 		"type":              string(row.CheckType),
 		"status":            string(row.Status),
 		"phone_count":       row.PhoneCount,
+		"row_count":         rowCount,
+		"invalid_count":     invalidCount,
+		"duplicate_count":   duplicateCount,
 		"original_filename": row.OriginalFilename,
 		"error_message":     row.ErrorMessage,
 		"job_id":            row.JobID,

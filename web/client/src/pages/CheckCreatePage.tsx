@@ -145,6 +145,17 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
     }
   }
 
+  function resetForm() {
+    setPreview(null);
+    setFile(null);
+    setList("");
+    setDragOver(false);
+    upload.reset();
+    if (fileRef.current) {
+      fileRef.current.value = "";
+    }
+  }
+
   const est = preview ? csvEstimate : estimate;
   const pending = submitSingle.isPending || submitList.isPending || submitCSV.isPending || upload.isPending;
   const actionError = submitSingle.error ?? submitList.error ?? submitCSV.error ?? upload.error ?? est.error;
@@ -165,57 +176,62 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
             Цена за единицу: {formatMoney(est.data.unit_sell_price, est.data.currency)}
           </p>
         ) : null}
-        <Field label="CSV / TXT файл">
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv,.txt,text/csv,text/plain"
-            className="hidden"
-            onChange={(e) => takeFile(e.target.files?.[0] ?? null)}
-          />
-          <button
-            type="button"
-            className={`w-full rounded-md border border-dashed px-3 py-8 text-center text-sm ${
-              dragOver ? "border-blue-500 bg-blue-50" : "border-zinc-300 bg-zinc-50"
-            }`}
-            onClick={() => fileRef.current?.click()}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              takeFile(e.dataTransfer.files[0] ?? null);
-            }}
-          >
-            <span className="block font-medium text-zinc-800">Перетащите CSV/TXT сюда</span>
-            <span className="mt-1 block text-xs text-zinc-500">
-              Один номер на строку или в первом столбце. Файл разбирается сразу; проверка — после «Запустить проверку».
-            </span>
-            {file ? <span className="mt-2 block text-xs text-zinc-700">{file.name}</span> : null}
-            {upload.isPending ? <span className="mt-2 block text-xs text-zinc-500">загрузка…</span> : null}
-          </button>
-        </Field>
-        {preview ? <PreviewPhonesTable preview={preview} /> : null}
-        <p className="my-4 text-center text-xs text-zinc-500">или вставьте номера</p>
-        <Field label="Номера (E.164, по одному в строке или через запятую)">
-          <Textarea
-            value={list}
-            placeholder="+79991234567"
-            rows={8}
-            onChange={(e) => {
-              setList(e.target.value);
-              setPreview(null);
-              setFile(null);
-              if (fileRef.current) {
-                fileRef.current.value = "";
-              }
-            }}
-          />
-        </Field>
-        <p className="mb-3 text-xs text-zinc-500">{phones.length} номеров</p>
+        {preview ? (
+          <PreviewPhonesTable preview={preview} />
+        ) : (
+          <>
+            <Field label="CSV / TXT файл">
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".csv,.txt,text/csv,text/plain"
+                className="hidden"
+                onChange={(e) => takeFile(e.target.files?.[0] ?? null)}
+              />
+              <button
+                type="button"
+                className={`w-full rounded-md border border-dashed px-3 py-8 text-center text-sm ${
+                  dragOver ? "border-blue-500 bg-blue-50" : "border-zinc-300 bg-zinc-50"
+                }`}
+                onClick={() => fileRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(true);
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(false);
+                  takeFile(e.dataTransfer.files[0] ?? null);
+                }}
+              >
+                <span className="block font-medium text-zinc-800">Перетащите CSV/TXT сюда</span>
+                <span className="mt-1 block text-xs text-zinc-500">
+                  Один номер на строку или в первом столбце. Файл разбирается сразу; проверка — после «Запустить проверку».
+                </span>
+                {file ? <span className="mt-2 block text-xs text-zinc-700">{file.name}</span> : null}
+                {upload.isPending ? <span className="mt-2 block text-xs text-zinc-500">загрузка…</span> : null}
+              </button>
+            </Field>
+            <p className="my-4 text-center text-xs text-zinc-500">или вставьте номера</p>
+            <Field label="Номера (E.164, по одному в строке или через запятую)">
+              <Textarea
+                value={list}
+                placeholder="+79991234567"
+                rows={8}
+                onChange={(e) => {
+                  setList(e.target.value);
+                  setPreview(null);
+                  setFile(null);
+                  if (fileRef.current) {
+                    fileRef.current.value = "";
+                  }
+                }}
+              />
+            </Field>
+            <p className="mb-3 text-xs text-zinc-500">{phones.length} номеров</p>
+          </>
+        )}
         {est.data ? (
           <p className="mb-3 text-sm text-zinc-600">
             {est.data.quantity} шт. × {formatMoney(est.data.unit_sell_price, est.data.currency)} ={" "}
@@ -240,6 +256,11 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
           >
             Запустить проверку
           </Button>
+          {preview || list.trim() !== "" ? (
+            <Button type="button" disabled={pending} onClick={resetForm}>
+              Сброс
+            </Button>
+          ) : null}
         </div>
       </Card>
     </div>

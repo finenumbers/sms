@@ -42,7 +42,7 @@ export function LookupsPage() {
   return (
     <div>
       <PageHeader
-        title="Проверки"
+        title="Проверки HLR / SSMS"
         actions={
           <div className="flex gap-2 text-sm">
             <Link className="text-blue-700 hover:underline" to="/hlr">

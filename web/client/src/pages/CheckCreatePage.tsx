@@ -131,18 +131,13 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
   return (
     <div>
       <PageHeader
-        title={`Проверка ${typeLabel[type]}`}
+        title={typeLabel[type]}
         actions={
           <Link className="text-sm text-blue-700 hover:underline" to="/lookups">
             История проверок
           </Link>
         }
       />
-      {type === "hlr" ? (
-        <p className="mb-3 text-sm text-zinc-600">Отправка HLR-запроса по номерам E.164.</p>
-      ) : (
-        <p className="mb-3 text-sm text-zinc-600">Отправка Silent SMS по номерам E.164.</p>
-      )}
       <Card className="mb-4">
         {est.data ? (
           <p className="mb-3 text-sm text-zinc-600">
@@ -181,9 +176,6 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
             {file ? <span className="mt-2 block text-xs text-zinc-700">{file.name}</span> : null}
             {upload.isPending ? <span className="mt-2 block text-xs text-zinc-500">загрузка…</span> : null}
           </button>
-          <Button type="button" variant="secondary" className="mt-2" onClick={() => fileRef.current?.click()}>
-            Загрузить файл
-          </Button>
         </Field>
         {preview ? <PreviewPhonesTable previewID={preview.id} /> : null}
         <p className="my-4 text-center text-xs text-zinc-500">или вставьте номера</p>

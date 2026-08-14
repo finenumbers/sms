@@ -45,33 +45,32 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
               e.preventDefault();
               send.mutate();
             }}
-            className="grid gap-3 md:grid-cols-2"
           >
-            <Field label="От (назначенный DEF)">
-              <Select value={from} onChange={(e) => setFrom(e.target.value)} required>
-                <option value="">выберите номер</option>
-                {(numbers.data?.items ?? []).map((n) => (
-                  <option key={n.id} value={n.msisdn}>
-                    {n.msisdn}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Кому">
-              <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="7XXXXXXXXXX" required />
-            </Field>
-            <div className="md:col-span-2">
-              <Field label="Текст">
-                <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1000} required />
+            <div className="grid md:grid-cols-2 md:gap-3">
+              <Field label="От (назначенный DEF)">
+                <Select value={from} onChange={(e) => setFrom(e.target.value)} required>
+                  <option value="">выберите номер</option>
+                  {(numbers.data?.items ?? []).map((n) => (
+                    <option key={n.id} value={n.msisdn}>
+                      {n.msisdn}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Кому">
+                <Input value={to} onChange={(e) => setTo(e.target.value)} placeholder="7XXXXXXXXXX" required />
               </Field>
             </div>
+            <Field label="Текст">
+              <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1000} required />
+            </Field>
             {estimate.data ? (
-              <p className="md:col-span-2 text-xs text-zinc-500">
+              <p className="mb-3 text-xs text-zinc-500">
                 {`${estimate.data.segments} PDU × ${formatMoney(estimate.data.unit_sell_price, estimate.data.currency)} = ${formatMoney(estimate.data.total, estimate.data.currency)}`}
               </p>
             ) : null}
-            {estimate.isError ? <div className="md:col-span-2"><ErrorBox error={estimate.error} /></div> : null}
-            {send.isError ? <div className="md:col-span-2"><ErrorBox error={send.error} /></div> : null}
+            {estimate.isError ? <ErrorBox error={estimate.error} /> : null}
+            {send.isError ? <ErrorBox error={send.error} /> : null}
             <Button type="submit" disabled={send.isPending}>
               Отправить
             </Button>

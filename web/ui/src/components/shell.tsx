@@ -16,7 +16,7 @@ export function Shell({
 }: {
   variant?: "client" | "admin";
   nav: NavItem[];
-  user?: string;
+  user?: ReactNode;
   aside?: ReactNode;
   onLogout: () => void;
   children: ReactNode;
@@ -32,7 +32,7 @@ export function Shell({
           admin ? "bg-[#FBE95F] text-black" : "border-b border-zinc-200 bg-white"
         }`}
       >
-        <div className={`text-sm ${admin ? "font-semibold text-black" : "font-semibold text-zinc-600"}`}>{user}</div>
+        <div className={`text-sm ${admin ? "font-semibold text-black" : "text-black"}`}>{user}</div>
         <div className="flex items-center gap-3 text-sm">{aside}</div>
       </header>
       <nav className="flex min-h-0 flex-col overflow-hidden px-3 pb-3" style={{ backgroundColor: "#212124" }}>

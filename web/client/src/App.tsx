@@ -59,7 +59,14 @@ function Layout({ children }: { children: ReactNode }) {
   });
   return (
     <Shell
-      user={me.data ? `${me.data.client_name} · ${me.data.email}` : undefined}
+      user={
+        me.data ? (
+          <div>
+            <div className="font-bold text-black">{me.data.client_name}</div>
+            <div className="font-normal text-black">{me.data.email}</div>
+          </div>
+        ) : undefined
+      }
       aside={
         bal.data ? (
           <span className="rounded-md bg-[#FBE95F] px-3 py-1.5 text-sm text-black">
@@ -72,9 +79,9 @@ function Layout({ children }: { children: ReactNode }) {
         { to: "/messages", label: "Исходящие SMS" },
         { to: "/inbox", label: "Входящие SMS" },
         { to: "/campaigns", label: "Рассылки SMS" },
-        { to: "/hlr", label: "Проверка HLR Lookup" },
-        { to: "/silent-sms", label: "Проверка Silent SMS" },
-        { to: "/lookups", label: "Проверки" },
+        { to: "/hlr", label: "HLR Lookup" },
+        { to: "/silent-sms", label: "Silent SMS" },
+        { to: "/lookups", label: "Проверки HLR / SSMS" },
         { to: "/webhooks", label: "Webhooks" },
         { to: "/billing", label: "Биллинг" },
         { to: "/api-keys", label: "API-ключи" },

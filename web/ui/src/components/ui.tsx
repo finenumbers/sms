@@ -134,7 +134,7 @@ export function Th({
   return (
     <th
       className={cn(
-        "border-b border-zinc-200 bg-zinc-50 px-3 font-medium text-zinc-600",
+        "border-b border-zinc-200 bg-zinc-50 px-3 py-0.5 font-medium text-zinc-600",
         fit && "w-px whitespace-nowrap",
         fluid && "w-full min-w-0",
       )}
@@ -158,7 +158,7 @@ export function Td({
   return (
     <td
       className={cn(
-        "border-b border-zinc-100 px-3",
+        "border-b border-zinc-100 px-3 py-0.5",
         fit && "w-px whitespace-nowrap",
         fluid && "w-full min-w-0 truncate",
         className,

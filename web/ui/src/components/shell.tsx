@@ -23,11 +23,20 @@ export function Shell({
 }) {
   const admin = variant === "admin";
   return (
-    <div className="flex h-screen overflow-hidden bg-zinc-50">
-      <nav className="flex h-screen w-52 shrink-0 flex-col overflow-hidden p-3" style={{ backgroundColor: "#212124" }}>
-        <img src={logo} alt="fine numbers" className="mb-3 w-full" />
-        <div className="mb-3 border-t border-white/20" />
-        <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="grid h-screen grid-cols-[13rem_minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] overflow-hidden bg-zinc-50">
+      <div className="flex flex-col justify-end border-b border-white/20 px-3 pt-3" style={{ backgroundColor: "#212124" }}>
+        <img src={logo} alt="fine numbers" className="mx-auto mb-3 block w-[85%]" />
+      </div>
+      <header
+        className={`flex items-center justify-between px-4 ${
+          admin ? "bg-[#FBE95F] text-black" : "border-b border-zinc-200 bg-white"
+        }`}
+      >
+        <div className={`text-sm ${admin ? "font-semibold text-black" : "font-semibold text-zinc-600"}`}>{user}</div>
+        <div className="flex items-center gap-3 text-sm">{aside}</div>
+      </header>
+      <nav className="flex min-h-0 flex-col overflow-hidden px-3 pb-3" style={{ backgroundColor: "#212124" }}>
+        <div className="min-h-0 flex-1 overflow-y-auto pt-3">
           {nav.map((item) => (
             <NavLink
               key={item.to}
@@ -49,23 +58,13 @@ export function Shell({
           <button
             type="button"
             onClick={onLogout}
-            className="block w-full rounded-md px-3 py-2 text-left text-sm font-bold text-white hover:bg-[#5A543B]"
+            className="block w-full rounded-md bg-[#FBE95F] px-3 py-2 text-left text-sm font-bold text-black hover:bg-[#F0DC4A]"
           >
             Выйти
           </button>
         </div>
       </nav>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header
-          className={`sticky top-0 z-10 flex shrink-0 items-center justify-between px-4 py-3 ${
-            admin ? "bg-[#FBE95F] text-black" : "border-b border-zinc-200 bg-white"
-          }`}
-        >
-          <div className={`text-sm ${admin ? "font-semibold text-black" : "font-semibold text-zinc-600"}`}>{user}</div>
-          <div className={`flex items-center gap-3 text-sm ${admin ? "text-black" : "text-zinc-600"}`}>{aside}</div>
-        </header>
-        <main className="min-w-0 flex-1 overflow-y-auto p-6">{children}</main>
-      </div>
+      <main className="min-h-0 overflow-y-auto p-6">{children}</main>
     </div>
   );
 }

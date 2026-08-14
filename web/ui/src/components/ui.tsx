@@ -4,20 +4,13 @@ import { cn } from "../lib/cn";
 
 export function Button({
   className,
-  variant = "primary",
+  variant: _variant = "primary",
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "danger" | "ghost" }) {
-  const styles = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "border border-zinc-300 bg-white hover:bg-zinc-50",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-    ghost: "text-zinc-700 hover:bg-zinc-100",
-  }[variant];
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center rounded-md px-3 py-2 text-sm font-medium disabled:opacity-50",
-        styles,
+        "inline-flex items-center justify-center rounded-md bg-[#FBE95F] px-3 py-2 text-sm font-bold text-black hover:bg-[#F0DC4A] disabled:opacity-50",
         className,
       )}
       {...props}
@@ -129,12 +122,51 @@ export function Table({ children }: { children: ReactNode }) {
   );
 }
 
-export function Th({ children }: { children?: ReactNode }) {
-  return <th className="border-b border-zinc-200 bg-zinc-50 px-3 py-2 font-medium text-zinc-600">{children}</th>;
+export function Th({
+  children,
+  fit,
+  fluid,
+}: {
+  children?: ReactNode;
+  fit?: boolean;
+  fluid?: boolean;
+}) {
+  return (
+    <th
+      className={cn(
+        "border-b border-zinc-200 bg-zinc-50 px-3 py-2 font-medium text-zinc-600",
+        fit && "w-px whitespace-nowrap",
+        fluid && "w-full min-w-0",
+      )}
+    >
+      {children}
+    </th>
+  );
 }
 
-export function Td({ children, className }: { children: ReactNode; className?: string }) {
-  return <td className={cn("border-b border-zinc-100 px-3 py-2", className)}>{children}</td>;
+export function Td({
+  children,
+  className,
+  fit,
+  fluid,
+}: {
+  children: ReactNode;
+  className?: string;
+  fit?: boolean;
+  fluid?: boolean;
+}) {
+  return (
+    <td
+      className={cn(
+        "border-b border-zinc-100 px-3 py-2",
+        fit && "w-px whitespace-nowrap",
+        fluid && "w-full min-w-0 truncate",
+        className,
+      )}
+    >
+      {children}
+    </td>
+  );
 }
 
 export function statusTone(status: string): "zinc" | "blue" | "green" | "amber" | "red" {

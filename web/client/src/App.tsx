@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-dom";
-import { ApiError, Shell, formatMoney } from "ui";
+import { ApiError, Shell, formatBalance } from "ui";
 import { api, type Balance, type ClientMe } from "./api";
 import { ApiKeysPage } from "./pages/ApiKeysPage";
 import { BillingPage } from "./pages/BillingPage";
@@ -62,7 +62,9 @@ function Layout({ children }: { children: ReactNode }) {
       user={me.data ? `${me.data.client_name} · ${me.data.email}` : undefined}
       aside={
         bal.data ? (
-          <span className="font-medium text-zinc-800">{formatMoney(bal.data.available_balance, bal.data.currency)}</span>
+          <span className="rounded-md bg-[#FBE95F] px-3 py-1.5 text-sm font-bold text-black">
+            {formatBalance(bal.data.available_balance, bal.data.currency)}
+          </span>
         ) : null
       }
       onLogout={() => logout.mutate()}

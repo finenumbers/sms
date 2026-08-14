@@ -59,6 +59,7 @@ export function LogsPage() {
             key={tab.id || "all"}
             type="button"
             variant={category === tab.id ? "primary" : "secondary"}
+            className={category === tab.id ? "ring-2 ring-black" : undefined}
             onClick={() => {
               setCategory(tab.id);
               setOffset(0);

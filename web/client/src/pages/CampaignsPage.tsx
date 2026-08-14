@@ -58,29 +58,29 @@ export function CampaignsPage() {
       <Table>
         <thead>
           <tr>
-            <Th>Создана</Th>
-            <Th>Откуда</Th>
-            <Th>Статус</Th>
-            <Th>Всего</Th>
-            <Th>Доставлено</Th>
+            <Th fit>Создана</Th>
+            <Th fit>Откуда</Th>
+            <Th fit>Статус</Th>
+            <Th fit>Всего</Th>
+            <Th fit>Доставлено</Th>
           </tr>
         </thead>
         <tbody>
           {items.map((c) => (
             <tr key={c.id}>
-              <Td>
+              <Td fit>
                 <Link className="text-blue-700 hover:underline" to={`/campaigns/${c.id}`}>
                   {formatDateTime(c.created_at)}
                 </Link>
               </Td>
-              <Td>
+              <Td fit>
                 <code>{c.from}</code>
               </Td>
-              <Td>
+              <Td fit>
                 <Badge tone={statusTone(c.status)}>{c.status}</Badge>
               </Td>
-              <Td>{c.total_count}</Td>
-              <Td>{c.delivered_count}</Td>
+              <Td fit>{c.total_count}</Td>
+              <Td fit>{c.delivered_count}</Td>
             </tr>
           ))}
         </tbody>

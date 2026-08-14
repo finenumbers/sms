@@ -204,17 +204,17 @@ export function CampaignDetailPage() {
       <Table>
         <thead>
           <tr>
-            <Th>Куда</Th>
-            <Th>Статус</Th>
+            <Th fit>Куда</Th>
+            <Th fit>Статус</Th>
           </tr>
         </thead>
         <tbody>
           {items.map((r) => (
             <tr key={r.id}>
-              <Td>
+              <Td fit>
                 <code>{r.to}</code>
               </Td>
-              <Td>
+              <Td fit>
                 <Badge tone={statusTone(r.message_status ?? r.status)}>{r.message_status ?? r.status}</Badge>
               </Td>
             </tr>

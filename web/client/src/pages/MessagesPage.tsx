@@ -82,33 +82,33 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
       <Table>
         <thead>
           <tr>
-            <Th>Время</Th>
-            <Th>Направление</Th>
-            <Th>Откуда</Th>
-            <Th>Куда</Th>
-            <Th>Статус</Th>
-            <Th>Текст</Th>
+            <Th fit>Время</Th>
+            <Th fit>Направление</Th>
+            <Th fit>Откуда</Th>
+            <Th fit>Куда</Th>
+            <Th fit>Статус</Th>
+            <Th fluid>Текст</Th>
           </tr>
         </thead>
         <tbody>
           {items.map((m) => (
             <tr key={m.id}>
-              <Td>
+              <Td fit>
                 <Link className="text-blue-700 hover:underline" to={`/messages/${m.id}`}>
                   {formatDateTime(m.created_at)}
                 </Link>
               </Td>
-              <Td>{m.direction === "inbound" ? "вх." : m.direction === "outbound" ? "исх." : m.direction}</Td>
-              <Td>
+              <Td fit>{m.direction === "inbound" ? "Входящая" : m.direction === "outbound" ? "Исходящая" : m.direction}</Td>
+              <Td fit>
                 <code>{m.from}</code>
               </Td>
-              <Td>
+              <Td fit>
                 <code>{m.to}</code>
               </Td>
-              <Td>
+              <Td fit>
                 <Badge tone={statusTone(m.status)}>{m.status}</Badge>
               </Td>
-              <Td className="max-w-xs truncate">{m.text}</Td>
+              <Td fluid>{m.text}</Td>
             </tr>
           ))}
         </tbody>

@@ -1,6 +1,6 @@
 export { cn } from "./lib/cn";
 export { ApiError, createApi, formatApiError, request, type Api } from "./lib/api";
-export { formatMoney } from "./lib/money";
+export { formatMoney, formatBalance } from "./lib/money";
 export { formatDateTime } from "./lib/datetime";
 export { pollStatus } from "./lib/poll";
 export { PAGE_SIZE, INFINITE_PAGE_SIZE, withPage } from "./lib/page";

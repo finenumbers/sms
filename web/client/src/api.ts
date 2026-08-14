@@ -187,7 +187,14 @@ export type Campaign = {
   recipients?: { total: number; pending: number; enqueued: number; skipped: number; failed: number };
 };
 
-export type Recipient = { id: string; to: string; status: string; created_at: string; message_id?: string };
+export type Recipient = {
+  id: string;
+  to: string;
+  status: string;
+  created_at: string;
+  message_id?: string;
+  message_status?: string;
+};
 
 export type APIKey = {
   id: string;

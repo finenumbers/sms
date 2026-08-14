@@ -215,7 +215,7 @@ export function CampaignDetailPage() {
                 <code>{r.to}</code>
               </Td>
               <Td>
-                <Badge tone={statusTone(r.status)}>{r.status}</Badge>
+                <Badge tone={statusTone(r.message_status ?? r.status)}>{r.message_status ?? r.status}</Badge>
               </Td>
             </tr>
           ))}

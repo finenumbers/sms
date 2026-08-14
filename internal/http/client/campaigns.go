@@ -262,6 +262,9 @@ func (h *Handlers) ListRecipients(w http.ResponseWriter, r *http.Request) {
 		if rec.SmsMessageID != nil {
 			row["message_id"] = *rec.SmsMessageID
 		}
+		if rec.MessageStatus.Valid {
+			row["message_status"] = rec.MessageStatus.SmsStatus
+		}
 		out = append(out, row)
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"items": out})

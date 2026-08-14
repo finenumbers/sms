@@ -135,6 +135,21 @@ WHERE campaign_id = sqlc.arg(campaign_id)
 ORDER BY created_at, id
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
+-- name: ListCampaignRecipientRows :many
+SELECT
+    r.id,
+    r.campaign_id,
+    r.to_msisdn,
+    r.status,
+    r.sms_message_id,
+    r.created_at,
+    m.status AS message_status
+FROM campaign_recipients r
+LEFT JOIN sms_messages m ON m.id = r.sms_message_id
+WHERE r.campaign_id = sqlc.arg(campaign_id)
+ORDER BY r.created_at, r.id
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
 -- name: InsertCampaignRecipients :execrows
 INSERT INTO campaign_recipients (campaign_id, to_msisdn)
 SELECT sqlc.arg(campaign_id), x

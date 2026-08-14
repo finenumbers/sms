@@ -375,6 +375,66 @@ func (q *Queries) ListCampaignRecipientMSISDNs(ctx context.Context, campaignID u
 	return items, nil
 }
 
+const listCampaignRecipientRows = `-- name: ListCampaignRecipientRows :many
+SELECT
+    r.id,
+    r.campaign_id,
+    r.to_msisdn,
+    r.status,
+    r.sms_message_id,
+    r.created_at,
+    m.status AS message_status
+FROM campaign_recipients r
+LEFT JOIN sms_messages m ON m.id = r.sms_message_id
+WHERE r.campaign_id = $1
+ORDER BY r.created_at, r.id
+LIMIT $3 OFFSET $2
+`
+
+type ListCampaignRecipientRowsParams struct {
+	CampaignID uuid.UUID `json:"campaign_id"`
+	PageOffset int32     `json:"page_offset"`
+	PageLimit  int32     `json:"page_limit"`
+}
+
+type ListCampaignRecipientRowsRow struct {
+	ID            uuid.UUID               `json:"id"`
+	CampaignID    uuid.UUID               `json:"campaign_id"`
+	ToMsisdn      string                  `json:"to_msisdn"`
+	Status        CampaignRecipientStatus `json:"status"`
+	SmsMessageID  *uuid.UUID              `json:"sms_message_id"`
+	CreatedAt     time.Time               `json:"created_at"`
+	MessageStatus NullSmsStatus           `json:"message_status"`
+}
+
+func (q *Queries) ListCampaignRecipientRows(ctx context.Context, arg ListCampaignRecipientRowsParams) ([]ListCampaignRecipientRowsRow, error) {
+	rows, err := q.db.Query(ctx, listCampaignRecipientRows, arg.CampaignID, arg.PageOffset, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListCampaignRecipientRowsRow
+	for rows.Next() {
+		var i ListCampaignRecipientRowsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CampaignID,
+			&i.ToMsisdn,
+			&i.Status,
+			&i.SmsMessageID,
+			&i.CreatedAt,
+			&i.MessageStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCampaignRecipients = `-- name: ListCampaignRecipients :many
 SELECT id, campaign_id, to_msisdn, status, sms_message_id, created_at FROM campaign_recipients
 WHERE campaign_id = $1

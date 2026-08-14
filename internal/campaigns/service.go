@@ -261,7 +261,7 @@ func (s *Service) AddRecipients(ctx context.Context, clientID, id uuid.UUID, msi
 	return out, nil
 }
 
-func (s *Service) ListRecipients(ctx context.Context, clientID, id uuid.UUID, limit, offset int32) ([]sqlcdb.CampaignRecipient, error) {
+func (s *Service) ListRecipients(ctx context.Context, clientID, id uuid.UUID, limit, offset int32) ([]sqlcdb.ListCampaignRecipientRowsRow, error) {
 	if _, err := s.get(ctx, clientID, id); err != nil {
 		return nil, err
 	}
@@ -271,7 +271,7 @@ func (s *Service) ListRecipients(ctx context.Context, clientID, id uuid.UUID, li
 	if offset < 0 {
 		offset = 0
 	}
-	return s.store.Queries.ListCampaignRecipients(ctx, sqlcdb.ListCampaignRecipientsParams{
+	return s.store.Queries.ListCampaignRecipientRows(ctx, sqlcdb.ListCampaignRecipientRowsParams{
 		CampaignID: id,
 		PageLimit:  limit,
 		PageOffset: offset,

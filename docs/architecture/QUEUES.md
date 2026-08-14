@@ -38,3 +38,5 @@ Reclaim **send jobs**: `processing` старше TTL → `uncertain` + `last_err
 CSV/список → `campaign_recipients` (батч `UNNEST … ON CONFLICT DO NOTHING`, unique `(campaign_id, to_msisdn)`). Только в `draft`. Лимит 10⁵ получателей.
 
 Start → `queued` (202). `from_msisdn` и `text` после выхода из `draft` immutable. Worker переводит `queued` → `running` и батчами, **fair по `client_id`**, создаёт `sms_messages` + `send_jobs`. Cancel ставит `cancelled` и не клеймит новые recipients (`pending` → `skipped`); уже созданные send jobs дожимаются. Счётчики — периодическая агрегация по `sms_messages`, не триггер на каждую DLR. `completed`, когда нет `pending` recipients и нет открытых send jobs.
+
+Список получателей: `status` — очередь (`pending`/`enqueued`/`skipped`/`failed`); `message_status` — статус SMS, если строка ещё в БД. ЛК показывает `message_status ?? status`. После retention `sms_message_id` обнуляется, `message_status` пропадает.

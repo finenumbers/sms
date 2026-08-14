@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, statusTone, withPage, formatMoney } from "ui";
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, statusTone, withPage, formatDateTime, formatMoney } from "ui";
 import { api, type Estimate, type Message, type NumberOpt } from "../api";
 
 export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
@@ -95,7 +95,7 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
             <tr key={m.id}>
               <Td>
                 <Link className="text-blue-700 hover:underline" to={`/messages/${m.id}`}>
-                  {m.created_at}
+                  {formatDateTime(m.created_at)}
                 </Link>
               </Td>
               <Td>{m.direction === "inbound" ? "вх." : m.direction === "outbound" ? "исх." : m.direction}</Td>

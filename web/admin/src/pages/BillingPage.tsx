@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Th, withPage, formatMoney } from "ui";
+import { EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Th, withPage, formatDateTime, formatMoney } from "ui";
 import { api, type ClientRow, type LedgerRow } from "../api";
 
 export function BillingPage() {
@@ -71,7 +71,7 @@ export function BillingPage() {
         <tbody>
           {items.map((row) => (
             <tr key={row.id}>
-              <Td>{row.created_at}</Td>
+              <Td>{formatDateTime(row.created_at)}</Td>
               <Td>
                 <Link className="text-blue-700 hover:underline" to={`/clients/${row.client_id}`}>
                   {row.client_name ?? row.client_id}

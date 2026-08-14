@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Badge, EmptyState, ErrorBox, PageHeader, Table, Td, Th, statusTone } from "ui";
+import { Badge, EmptyState, ErrorBox, PageHeader, Table, Td, Th, statusTone, formatDateTime } from "ui";
 import { api, type APIKey } from "../api";
 
 export function ApiKeysPage() {
@@ -31,7 +31,7 @@ export function ApiKeysPage() {
               <Td>
                 <Badge tone={statusTone(k.status)}>{k.status}</Badge>
               </Td>
-              <Td>{k.last_used_at ?? "—"}</Td>
+              <Td>{formatDateTime(k.last_used_at)}</Td>
             </tr>
             ))}
           </tbody>

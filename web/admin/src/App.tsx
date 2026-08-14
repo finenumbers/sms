@@ -56,7 +56,7 @@ function Layout({ children }: { children: ReactNode }) {
   });
   return (
     <Shell
-      brand="Админка Finenumbers"
+      variant="admin"
       user={me.data?.email}
       onLogout={() => logout.mutate()}
       nav={[

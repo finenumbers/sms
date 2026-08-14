@@ -6,6 +6,8 @@ COPY web/admin/package.json ./admin/
 COPY web/client/package.json ./client/
 RUN npm ci
 COPY web/ ./
+ARG VITE_APP_VERSION=dev
+ENV VITE_APP_VERSION=$VITE_APP_VERSION
 RUN npm run build
 
 FROM golang:1.26-bookworm AS build

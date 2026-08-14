@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Badge, Button, Card, EmptyState, Field, Input, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, statusTone, withPage } from "ui";
+import { Alert, Badge, Button, Card, EmptyState, Field, Input, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, statusTone, withPage, formatDateTime } from "ui";
 import { api, type WebhookDelivery, type WebhookEndpoint } from "../api";
 import { lookupError } from "../lookup";
 
@@ -186,7 +186,7 @@ export function WebhooksPage() {
             <tbody>
               {logs.map((d) => (
                 <tr key={d.id}>
-                  <Td>{d.created_at}</Td>
+                  <Td>{formatDateTime(d.created_at)}</Td>
                   <Td>{d.event_type}</Td>
                   <Td>
                     <Badge tone={statusTone(d.status)}>{d.status}</Badge>

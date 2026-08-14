@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Th, withPage } from "ui";
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Th, withPage, formatDateTime } from "ui";
 import { api, type OpsLogRow } from "../api";
 
 const TABS: { id: string; label: string }[] = [
@@ -122,7 +122,7 @@ export function LogsPage() {
             <tr key={e.id}>
               <Td>
                 <Link className="text-blue-700 hover:underline" to={`/logs/${e.id}`}>
-                  {e.created_at}
+                  {formatDateTime(e.created_at)}
                 </Link>
               </Td>
               <Td>

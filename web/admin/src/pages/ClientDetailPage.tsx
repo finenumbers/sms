@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, statusTone, formatMoney } from "ui";
+import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, statusTone, formatDateTime, formatMoney } from "ui";
 import { api, type APIKey, type ClientBilling, type ClientDetail, type TariffPlan } from "../api";
 import { priceUnit, productLabel } from "../lookup";
 
@@ -324,7 +324,7 @@ export function ClientDetailPage() {
             <tbody>
               {billing.data.ledger.map((row) => (
                 <tr key={row.id}>
-                  <Td>{row.created_at}</Td>
+                  <Td>{formatDateTime(row.created_at)}</Td>
                   <Td>{row.type}</Td>
                   <Td>{formatMoney(row.amount, row.currency)}</Td>
                   <Td>{row.description ?? "—"}</Td>
@@ -389,7 +389,7 @@ export function ClientDetailPage() {
                 <Td>
                   <Badge tone={statusTone(k.status)}>{k.status}</Badge>
                 </Td>
-                <Td>{k.last_used_at ?? "—"}</Td>
+                <Td>{formatDateTime(k.last_used_at)}</Td>
                 <Td>
                   {k.status === "active" ? (
                     <Button variant="ghost" type="button" onClick={() => revoke.mutate(k.id)}>

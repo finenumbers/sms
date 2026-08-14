@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Badge, Card, ErrorBox, PageHeader, pollStatus, statusTone, formatMoney } from "ui";
+import { Badge, Card, ErrorBox, PageHeader, pollStatus, statusTone, formatDateTime, formatMoney } from "ui";
 import { api, type Message } from "../api";
 
 export function MessageDetailPage() {
@@ -53,7 +53,7 @@ export function MessageDetailPage() {
           </div>
           <div>
             <dt className="text-zinc-500">Создано</dt>
-            <dd>{m.created_at}</dd>
+            <dd>{formatDateTime(m.created_at)}</dd>
           </div>
           <div>
             <dt className="text-zinc-500">ID у провайдера</dt>

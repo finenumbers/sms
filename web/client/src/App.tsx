@@ -59,7 +59,6 @@ function Layout({ children }: { children: ReactNode }) {
   });
   return (
     <Shell
-      brand="Кабинет Finenumbers"
       user={me.data ? `${me.data.client_name} · ${me.data.email}` : undefined}
       aside={
         bal.data ? (

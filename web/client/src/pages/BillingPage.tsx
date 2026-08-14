@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, withPage, formatMoney } from "ui";
+import { Card, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, withPage, formatDateTime, formatMoney } from "ui";
 import { useState } from "react";
 import { api, type Balance, type BillingStats, type ClientTariff, type LedgerRow } from "../api";
 import { typeLabel } from "../lookup";
@@ -95,7 +95,7 @@ export function BillingPage() {
         <tbody>
           {items.map((row) => (
             <tr key={row.id}>
-              <Td>{row.created_at}</Td>
+              <Td>{formatDateTime(row.created_at)}</Td>
               <Td>{row.type}</Td>
               <Td>{formatMoney(row.amount, row.currency)}</Td>
               <Td>{row.description ?? "—"}</Td>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, statusTone, formatMoney } from "ui";
+import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, statusTone, formatDateTime, formatMoney } from "ui";
 import { api, probeSMSCConnectivity, type LookupMonitoring, type SMSCBalance, type SMSCConnectivity, type SMSCEstimate, type Settings } from "../api";
 import { yn } from "../lookup";
 
@@ -154,7 +154,7 @@ export function MonitoringPage() {
           <tbody>
             {(mon.data?.recent_requests ?? []).map((row) => (
               <tr key={row.id}>
-                <Td>{row.created_at}</Td>
+                <Td>{formatDateTime(row.created_at)}</Td>
                 <Td>{row.kind}</Td>
                 <Td>
                   <Badge tone={statusTone(row.status)}>{row.status}</Badge>
@@ -183,13 +183,13 @@ export function MonitoringPage() {
           <tbody>
             {(mon.data?.recent_callbacks ?? []).map((row) => (
               <tr key={row.id}>
-                <Td>{row.created_at}</Td>
+                <Td>{formatDateTime(row.created_at)}</Td>
                 <Td>{row.provider_message_id ?? "—"}</Td>
                 <Td>{row.phone ?? "—"}</Td>
                 <Td>
                   <Badge tone={row.signature_valid ? "green" : "red"}>{yn(row.signature_valid)}</Badge>
                 </Td>
-                <Td>{row.processed_at ?? "—"}</Td>
+                <Td>{formatDateTime(row.processed_at)}</Td>
                 <Td>{row.process_error ?? "—"}</Td>
               </tr>
             ))}

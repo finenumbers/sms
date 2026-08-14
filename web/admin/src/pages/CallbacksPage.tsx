@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Badge, Card, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, withPage } from "ui";
+import { Badge, Card, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, withPage, formatDateTime } from "ui";
 import { api, type CallbackRow } from "../api";
 
 export function CallbacksPage() {
@@ -38,7 +38,7 @@ export function CallbacksPage() {
             <tr key={e.id}>
               <Td>
                 <Link className="text-blue-700 hover:underline" to={`/callbacks/${e.id}`}>
-                  {e.created_at}
+                  {formatDateTime(e.created_at)}
                 </Link>
               </Td>
               <Td>

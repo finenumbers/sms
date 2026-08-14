@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, statusTone, withPage } from "ui";
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, statusTone, withPage, formatDateTime } from "ui";
 import { api, type Campaign, type NumberOpt } from "../api";
 
 export function CampaignsPage() {
@@ -70,7 +70,7 @@ export function CampaignsPage() {
             <tr key={c.id}>
               <Td>
                 <Link className="text-blue-700 hover:underline" to={`/campaigns/${c.id}`}>
-                  {c.created_at}
+                  {formatDateTime(c.created_at)}
                 </Link>
               </Td>
               <Td>

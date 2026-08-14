@@ -14,6 +14,7 @@ import {
   Th,
   statusTone,
   withPage,
+  formatDateTime,
   formatMoney,
 } from "ui";
 import { api, type ClientRow, type LookupJob } from "../api";
@@ -89,7 +90,7 @@ export function JobsPage() {
             <tr key={job.id}>
               <Td>
                 <Link className="text-blue-700 hover:underline" to={`/jobs/${job.id}`}>
-                  {job.created_at}
+                  {formatDateTime(job.created_at)}
                 </Link>
               </Td>
               <Td>

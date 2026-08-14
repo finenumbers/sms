@@ -25,11 +25,15 @@ const createStatementTimeout = 120 * time.Second
 // SetCreateStatementTimeout caps a write TX that inserts lookup items / HOLD.
 // Public CSV materialize and cabinet Create must use the same budget: the
 // consuming-heal TTL is derived from this value.
+func createStatementTimeoutSQL() string {
+	return fmt.Sprintf("SET LOCAL statement_timeout = %d", createStatementTimeout.Milliseconds())
+}
+
 func SetCreateStatementTimeout(ctx context.Context, tx pgx.Tx) error {
 	if tx == nil {
 		return nil
 	}
-	_, err := tx.Exec(ctx, fmt.Sprintf("SET LOCAL statement_timeout = '%s'", createStatementTimeout))
+	_, err := tx.Exec(ctx, createStatementTimeoutSQL())
 	return err
 }
 

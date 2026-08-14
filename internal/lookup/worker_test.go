@@ -38,6 +38,14 @@ func TestCSVConsumingHealOutlivesCreateTimeout(t *testing.T) {
 	}
 }
 
+func TestCreateStatementTimeoutSQLUsesMilliseconds(t *testing.T) {
+	got := createStatementTimeoutSQL()
+	want := "SET LOCAL statement_timeout = 120000"
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
+	}
+}
+
 func TestCanStartLookupIO(t *testing.T) {
 	now := time.Date(2026, 8, 14, 12, 0, 0, 0, time.UTC)
 	if !canStartLookupIO(now, time.Time{}) {

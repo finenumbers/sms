@@ -95,6 +95,7 @@ func (h *Handlers) LookupCreateCheck(w http.ResponseWriter, r *http.Request) {
 		CreatedBy: p.ClientUserID,
 	})
 	if err != nil {
+		h.Log.Error("create lookup check", "err", err)
 		lookup.WriteError(w, err)
 		return
 	}
@@ -124,6 +125,7 @@ func (h *Handlers) LookupCreateJob(w http.ResponseWriter, r *http.Request) {
 		CreatedBy: p.ClientUserID,
 	})
 	if err != nil {
+		h.Log.Error("create lookup job", "err", err)
 		lookup.WriteError(w, err)
 		return
 	}

@@ -71,7 +71,7 @@ function Layout({ children }: { children: ReactNode }) {
         { to: "/messages", label: "Исходящие SMS" },
         { to: "/inbox", label: "Входящие SMS" },
         { to: "/campaigns", label: "Рассылки SMS" },
-        { to: "/hlr", label: "Проверка HLR" },
+        { to: "/hlr", label: "Проверка HLR Lookup" },
         { to: "/silent-sms", label: "Проверка Silent SMS" },
         { to: "/lookups", label: "Проверки" },
         { to: "/webhooks", label: "Webhooks" },

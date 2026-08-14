@@ -252,8 +252,8 @@ export function ClientDetailPage() {
           </div>
           <h3 className="mt-4 mb-2 text-sm font-medium">Тарифы</h3>
           <p className="mb-2 text-xs text-zinc-500">
-            SMS на номера 7… — как в направлениях платформы (включая 77…), не географическая Россия. HLR и Silent SMS
-            назначаются отдельно, цена — за проверку, без себестоимости.
+            SMS / Russia — номера 7… как в направлениях платформы (включая 77…), не географическая Россия. HLR Lookup и
+            Silent SMS назначаются отдельно, цена — за проверку, без себестоимости.
           </p>
           <ul className="mb-3 text-sm">
             {billing.data.tariffs.length === 0 ? <li>не назначены</li> : null}

@@ -5,9 +5,9 @@ import { api, type Balance, type BillingStats, type ClientTariff, type LedgerRow
 import { typeLabel } from "../lookup";
 
 const productLabel: Record<string, string> = {
-  sms_domestic: "SMS на номера 7…",
-  sms_international: "SMS международный",
-  hlr: "HLR",
+  sms_domestic: "SMS / Russia",
+  sms_international: "SMS / International",
+  hlr: "HLR Lookup",
   silent_sms: "Silent SMS",
 };
 

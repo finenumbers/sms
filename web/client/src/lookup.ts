@@ -26,7 +26,7 @@ export const resultLabel: Record<string, string> = {
 };
 
 export const typeLabel: Record<LookupCheckType, string> = {
-  hlr: "HLR",
+  hlr: "HLR Lookup",
   ping: "Silent SMS",
 };
 

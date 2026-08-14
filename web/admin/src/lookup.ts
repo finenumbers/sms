@@ -23,7 +23,7 @@ export const resultLabel: Record<string, string> = {
 };
 
 export const typeLabel: Record<string, string> = {
-  hlr: "HLR",
+  hlr: "HLR Lookup",
   ping: "Silent SMS",
 };
 
@@ -34,9 +34,9 @@ export const sourceLabel: Record<string, string> = {
 };
 
 export const productLabel: Record<string, string> = {
-  sms_domestic: "SMS на номера 7… (как в направлениях платформы)",
-  sms_international: "SMS международный",
-  hlr: "HLR",
+  sms_domestic: "SMS / Russia",
+  sms_international: "SMS / International",
+  hlr: "HLR Lookup",
   silent_sms: "Silent SMS",
 };
 

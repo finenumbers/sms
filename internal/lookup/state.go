@@ -48,6 +48,14 @@ func IsTerminalJob(status sqlcdb.LookupJobStatus) bool {
 		status == sqlcdb.LookupJobStatusFailed
 }
 
+func itemStatusFilter(ss ...sqlcdb.LookupItemStatus) []string {
+	out := make([]string, len(ss))
+	for i, s := range ss {
+		out[i] = string(s)
+	}
+	return out
+}
+
 func CanTransitionItem(from, to sqlcdb.LookupItemStatus) bool {
 	if from == to {
 		return true

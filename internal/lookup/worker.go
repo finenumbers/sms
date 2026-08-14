@@ -340,7 +340,7 @@ func (w *Worker) submitItem(ctx context.Context, item sqlcdb.LookupItem, view se
 		PollAttempts:      &attempts,
 		SentAt:            &now,
 		ID:                item.ID,
-		FromStatuses:      []sqlcdb.LookupItemStatus{sqlcdb.LookupItemStatusReserved, sqlcdb.LookupItemStatusQueued},
+		FromStatuses:      itemStatusFilter(sqlcdb.LookupItemStatusReserved, sqlcdb.LookupItemStatusQueued),
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
 		w.log.Error("lookup submit update", "item_id", item.ID, "err", err)
@@ -367,7 +367,7 @@ func (w *Worker) applyTerminalFromSubmit(ctx context.Context, item sqlcdb.Lookup
 		SentAt:            &now,
 		CompletedAt:       &now,
 		ID:                item.ID,
-		FromStatuses:      []sqlcdb.LookupItemStatus{sqlcdb.LookupItemStatusReserved, sqlcdb.LookupItemStatusQueued},
+		FromStatuses:      itemStatusFilter(sqlcdb.LookupItemStatusReserved, sqlcdb.LookupItemStatusQueued),
 	})
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
@@ -486,7 +486,7 @@ func (w *Worker) reschedulePoll(ctx context.Context, item sqlcdb.LookupItem, vie
 		NextPollAt:   &next,
 		PollAttempts: &attempt,
 		ID:           item.ID,
-		FromStatuses: []sqlcdb.LookupItemStatus{sqlcdb.LookupItemStatusPending},
+		FromStatuses: itemStatusFilter(sqlcdb.LookupItemStatusPending),
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
 		w.log.Error("lookup reschedule poll", "item_id", item.ID, "err", err)
@@ -647,7 +647,7 @@ func (w *Worker) patchItem(ctx context.Context, item sqlcdb.LookupItem, n smsc.N
 		ErrorCode:         strPtr(n.ProviderErrorCode),
 		ErrorMessage:      strPtr(n.ProviderErrorMessage),
 		ID:                item.ID,
-		FromStatuses:      from,
+		FromStatuses:      itemStatusFilter(from...),
 	}
 	if terminal {
 		arg.CompletedAt = &now
@@ -671,11 +671,11 @@ func (w *Worker) failItem(ctx context.Context, item sqlcdb.LookupItem, code, mes
 		ErrorMessage: &message,
 		CompletedAt:  &now,
 		ID:           item.ID,
-		FromStatuses: []sqlcdb.LookupItemStatus{
+		FromStatuses: itemStatusFilter(
 			sqlcdb.LookupItemStatusQueued,
 			sqlcdb.LookupItemStatusReserved,
 			sqlcdb.LookupItemStatusPending,
-		},
+		),
 	})
 	if err != nil {
 		if !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
@@ -815,7 +815,7 @@ func (w *Worker) reconcile(ctx context.Context) error {
 			ToStatus:     sqlcdb.LookupItemStatusPending,
 			NextPollAt:   &now,
 			ID:           item.ID,
-			FromStatuses: []sqlcdb.LookupItemStatus{sqlcdb.LookupItemStatusPending},
+			FromStatuses: itemStatusFilter(sqlcdb.LookupItemStatusPending),
 		})
 	}
 
@@ -932,7 +932,7 @@ func (w *Worker) releasePendingLease(ctx context.Context, item sqlcdb.LookupItem
 		ToStatus:     sqlcdb.LookupItemStatusPending,
 		NextPollAt:   &now,
 		ID:           item.ID,
-		FromStatuses: []sqlcdb.LookupItemStatus{sqlcdb.LookupItemStatusPending},
+		FromStatuses: itemStatusFilter(sqlcdb.LookupItemStatusPending),
 	})
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
 		w.log.Error("lookup return pending lease", "item_id", item.ID, "err", err)

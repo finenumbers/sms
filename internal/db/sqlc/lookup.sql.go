@@ -2913,32 +2913,32 @@ SET status = $1,
     completed_at = COALESCE($19, completed_at),
     updated_at = now()
 WHERE id = $20
-  AND status = ANY($21::lookup_item_status[])
+  AND status = ANY($21::text[]::lookup_item_status[])
 RETURNING id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
 `
 
 type TransitionLookupItemParams struct {
-	ToStatus          LookupItemStatus   `json:"to_status"`
-	ProviderCode      *string            `json:"provider_code"`
-	ProviderMessageID *string            `json:"provider_message_id"`
-	ResultStatus      *string            `json:"result_status"`
-	IsReachable       *bool              `json:"is_reachable"`
-	Imsi              *string            `json:"imsi"`
-	Mcc               *string            `json:"mcc"`
-	Mnc               *string            `json:"mnc"`
-	OperatorName      *string            `json:"operator_name"`
-	CountryCode       *string            `json:"country_code"`
-	Ported            *bool              `json:"ported"`
-	Roaming           *bool              `json:"roaming"`
-	NormalizedResult  []byte             `json:"normalized_result"`
-	ErrorCode         *string            `json:"error_code"`
-	ErrorMessage      *string            `json:"error_message"`
-	NextPollAt        *time.Time         `json:"next_poll_at"`
-	PollAttempts      *int32             `json:"poll_attempts"`
-	SentAt            *time.Time         `json:"sent_at"`
-	CompletedAt       *time.Time         `json:"completed_at"`
-	ID                uuid.UUID          `json:"id"`
-	FromStatuses      []LookupItemStatus `json:"from_statuses"`
+	ToStatus          LookupItemStatus `json:"to_status"`
+	ProviderCode      *string          `json:"provider_code"`
+	ProviderMessageID *string          `json:"provider_message_id"`
+	ResultStatus      *string          `json:"result_status"`
+	IsReachable       *bool            `json:"is_reachable"`
+	Imsi              *string          `json:"imsi"`
+	Mcc               *string          `json:"mcc"`
+	Mnc               *string          `json:"mnc"`
+	OperatorName      *string          `json:"operator_name"`
+	CountryCode       *string          `json:"country_code"`
+	Ported            *bool            `json:"ported"`
+	Roaming           *bool            `json:"roaming"`
+	NormalizedResult  []byte           `json:"normalized_result"`
+	ErrorCode         *string          `json:"error_code"`
+	ErrorMessage      *string          `json:"error_message"`
+	NextPollAt        *time.Time       `json:"next_poll_at"`
+	PollAttempts      *int32           `json:"poll_attempts"`
+	SentAt            *time.Time       `json:"sent_at"`
+	CompletedAt       *time.Time       `json:"completed_at"`
+	ID                uuid.UUID        `json:"id"`
+	FromStatuses      []string         `json:"from_statuses"`
 }
 
 // billing_action is written only by SetLookupItemBillingAction inside settle.

@@ -3,6 +3,7 @@ package smschttp
 import (
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -82,6 +83,7 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 	applied := false
 	duplicate := false
 	reason := ""
+	errText := ""
 	var applyErr error
 	phoneDigits := lookup.CallbackPhoneDigits(result.Normalized.PhoneE164)
 	if h.Lookup != nil && (result.ProviderMessageID != "" || phoneDigits != "") {
@@ -94,6 +96,7 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 		})
 		if applyErr != nil {
 			reason = "apply_error"
+			errText = applyErr.Error()
 			if h.Log != nil {
 				h.Log.Error("smsc callback apply", "err", applyErr)
 			}
@@ -101,6 +104,7 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 			applied = res.Applied || res.Duplicate
 			duplicate = res.Duplicate
 			reason = res.Reason
+			errText = res.Error
 			if reason == "not_found" {
 				reason = "item_not_found"
 			}
@@ -133,6 +137,9 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 		if phoneDigits != "" {
 			summary += " phone=" + phoneDigits
 		}
+		if errText != "" {
+			summary += " err=" + clipErr(errText, 120)
+		}
 		h.Ops.Write(r.Context(), ops.Event{
 			Category:   ops.CategoryIngress,
 			Level:      ops.LevelInfo,
@@ -148,21 +155,23 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 				"deduped":    result.Deduplicated,
 				"message_id": result.ProviderMessageID,
 				"phone":      phoneDigits,
-				"error":      errString(applyErr),
+				"error":      errText,
 			},
 		})
 	}
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{
 		"applied":    applied,
 		"duplicate":  duplicate,
+		"reason":     reason,
 		"deduped":    result.Deduplicated,
 		"message_id": result.ProviderMessageID,
 	})
 }
 
-func errString(err error) string {
-	if err == nil {
-		return ""
+func clipErr(s string, n int) string {
+	s = strings.Join(strings.Fields(s), " ")
+	if n <= 0 || len(s) <= n {
+		return s
 	}
-	return err.Error()
+	return s[:n]
 }

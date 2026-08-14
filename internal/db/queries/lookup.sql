@@ -235,7 +235,7 @@ SET status = sqlc.arg(to_status),
     completed_at = COALESCE(sqlc.narg(completed_at), completed_at),
     updated_at = now()
 WHERE id = sqlc.arg(id)
-  AND status = ANY(sqlc.arg(from_statuses)::lookup_item_status[])
+  AND status = ANY(sqlc.arg(from_statuses)::text[]::lookup_item_status[])
 RETURNING *;
 
 -- name: GetLookupItemByProviderMessage :one

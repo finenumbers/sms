@@ -29,6 +29,7 @@ type IncomingResult struct {
 	Applied   bool
 	Duplicate bool
 	Reason    string
+	Error     string
 	Item      sqlcdb.LookupItem
 }
 
@@ -153,13 +154,23 @@ func (w *Worker) lookupCallbackItems(ctx context.Context, in IncomingCallback) (
 	return byID, byPhone, nil
 }
 
+func incomingApplyFailure(err error) IncomingResult {
+	if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, ErrNotFound) {
+		return IncomingResult{Reason: "item_not_found"}
+	}
+	return IncomingResult{Reason: "apply_error", Error: err.Error()}
+}
+
 func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (IncomingResult, error) {
 	if w == nil || w.store == nil || (in.ProviderMessageID == "" && in.PhoneDigits == "") {
 		return IncomingResult{Reason: "not_found"}, nil
 	}
 	byID, byPhone, err := w.lookupCallbackItems(ctx, in)
 	if err != nil {
-		return IncomingResult{}, err
+		if w.log != nil {
+			w.log.Error("lookup callback items", "err", err)
+		}
+		return incomingApplyFailure(err), nil
 	}
 	item, reason := pickCallbackItems(byID, byPhone)
 	if reason != "" {
@@ -177,10 +188,10 @@ func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (Incomi
 		SkipEnrich:        in.SkipEnrich,
 	})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return IncomingResult{Reason: "not_found"}, nil
+		if w.log != nil {
+			w.log.Error("lookup callback apply", "err", err)
 		}
-		return IncomingResult{}, err
+		return incomingApplyFailure(err), nil
 	}
 	if !applied.Applied && !applied.Duplicate && !applied.BecameTerminal {
 		reason := applied.Reason

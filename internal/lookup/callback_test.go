@@ -2,11 +2,14 @@ package lookup
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	sqlcdb "finenumbers/sms/internal/db/sqlc"
 	"finenumbers/sms/internal/smsc"
@@ -81,6 +84,34 @@ func TestApplyIncomingEmptyIDIsNotFound(t *testing.T) {
 	res, err := w.ApplyIncoming(t.Context(), IncomingCallback{})
 	if err != nil || res.Reason != "not_found" {
 		t.Fatalf("%#v %v", res, err)
+	}
+}
+
+func TestIncomingApplyFailureMapsNotFound(t *testing.T) {
+	got := incomingApplyFailure(wrap(ErrNotFound, "not_found", "JobItem not found for provider update"))
+	if got.Reason != "item_not_found" || got.Error != "" {
+		t.Fatalf("%#v", got)
+	}
+	got = incomingApplyFailure(pgx.ErrNoRows)
+	if got.Reason != "item_not_found" {
+		t.Fatalf("%#v", got)
+	}
+}
+
+func TestIncomingApplyFailureKeepsApplyErrorText(t *testing.T) {
+	got := incomingApplyFailure(errors.New("unable to encode []LookupItemStatus into text format"))
+	if got.Reason != "apply_error" {
+		t.Fatalf("reason=%s", got.Reason)
+	}
+	if !strings.Contains(got.Error, "unable to encode") {
+		t.Fatalf("error=%s", got.Error)
+	}
+}
+
+func TestItemStatusFilter(t *testing.T) {
+	got := itemStatusFilter(sqlcdb.LookupItemStatusReserved, sqlcdb.LookupItemStatusQueued)
+	if len(got) != 2 || got[0] != "reserved" || got[1] != "queued" {
+		t.Fatalf("%#v", got)
 	}
 }
 

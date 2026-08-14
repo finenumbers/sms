@@ -81,6 +81,9 @@ func TestCallbackAppliesWhenOnlyPhonePresent(t *testing.T) {
 	if out["applied"] != false {
 		t.Fatalf("no store: applied=%v", out["applied"])
 	}
+	if out["reason"] != "item_not_found" {
+		t.Fatalf("reason=%v", out["reason"])
+	}
 }
 
 func TestCallbackUnknownIDReturns200AppliedFalse(t *testing.T) {
@@ -108,6 +111,19 @@ func TestCallbackUnknownIDReturns200AppliedFalse(t *testing.T) {
 	}
 	if out["message_id"] != "1001" {
 		t.Fatalf("message_id=%v", out["message_id"])
+	}
+	if out["reason"] != "apply_error" {
+		t.Fatalf("nil lookup reason=%v", out["reason"])
+	}
+}
+
+func TestClipErr(t *testing.T) {
+	if got := clipErr("short", 120); got != "short" {
+		t.Fatalf("%q", got)
+	}
+	long := strings.Repeat("x", 200)
+	if got := clipErr(long, 120); got != long[:120] {
+		t.Fatalf("len=%d", len(got))
 	}
 }
 

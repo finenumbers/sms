@@ -334,11 +334,17 @@ func startLookupSideLoops(ctx context.Context, log *slog.Logger, lookups *lookup
 		return func() {}
 	}
 	var wg sync.WaitGroup
-	wg.Add(2)
+	wg.Add(3)
 	go func() {
 		defer wg.Done()
 		if err := runLookupLoop(ctx, log, lookups); err != nil && !errors.Is(err, context.Canceled) {
 			log.Error("lookup loop", "err", err)
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if err := runLookupCallbackLoop(ctx, log, lookups); err != nil && !errors.Is(err, context.Canceled) {
+			log.Error("lookup callback loop", "err", err)
 		}
 	}()
 	go func() {
@@ -385,6 +391,24 @@ func runLookupLoop(ctx context.Context, log *slog.Logger, lookups *lookup.Worker
 				log.Error("lookup jobs", "err", err)
 			} else if n > 0 {
 				log.Info("lookup jobs processed", "n", n)
+			}
+		}
+	}
+}
+
+func runLookupCallbackLoop(ctx context.Context, log *slog.Logger, lookups *lookup.Worker) error {
+	t := time.NewTicker(200 * time.Millisecond)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("lookup callback loop stopped")
+			return nil
+		case <-t.C:
+			if n, err := lookups.DrainCallbacks(ctx); err != nil {
+				log.Error("lookup callbacks", "err", err)
+			} else if n > 0 {
+				log.Info("lookup callbacks applied", "n", n)
 			}
 		}
 	}

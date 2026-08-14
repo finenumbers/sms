@@ -96,6 +96,11 @@ func (w *Worker) Tick(ctx context.Context) (int, error) {
 	}
 	deadline := w.now().Add(tickBudget)
 	n := 0
+	if c, err := w.applyStoredCallbacks(ctx); err != nil && w.log != nil {
+		w.log.Error("lookup callbacks", "err", err)
+	} else {
+		n += c
+	}
 	if w.now().Before(deadline) {
 		c, err := w.parsePendingCSV(ctx)
 		if err != nil && w.log != nil {
@@ -120,13 +125,10 @@ func (w *Worker) Tick(ctx context.Context) (int, error) {
 			n += c
 		}
 	}
-	if w.now().Before(deadline) {
-		c, err := w.applyStoredCallbacks(ctx, deadline)
-		if err != nil && w.log != nil {
-			w.log.Error("lookup callbacks", "err", err)
-		} else {
-			n += c
-		}
+	if c, err := w.applyStoredCallbacks(ctx); err != nil && w.log != nil {
+		w.log.Error("lookup callbacks", "err", err)
+	} else {
+		n += c
 	}
 	if w.now().Before(deadline) {
 		c, err := w.enrichTerminalHLR(ctx, deadline)
@@ -136,13 +138,10 @@ func (w *Worker) Tick(ctx context.Context) (int, error) {
 			n += c
 		}
 	}
-	if w.now().Before(deadline) {
-		c, err := w.finalizeReady(ctx)
-		if err != nil && w.log != nil {
-			w.log.Error("lookup finalize", "err", err)
-		} else {
-			n += c
-		}
+	if c, err := w.finalizeReady(ctx); err != nil && w.log != nil {
+		w.log.Error("lookup finalize", "err", err)
+	} else {
+		n += c
 	}
 	if w.now().Before(deadline) {
 		c, err := w.deliverWebhooks(ctx)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"finenumbers/sms/internal/lookup"
 	"finenumbers/sms/internal/smsc"
 )
 
@@ -47,6 +48,38 @@ func TestCallbackRejectsBadSignature(t *testing.T) {
 	h.Callback(rec, req)
 	if rec.Code != http.StatusUnauthorized {
 		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCallbackAppliesWhenOnlyPhonePresent(t *testing.T) {
+	secret := "callback-secret"
+	p := smsc.New(smsc.Options{
+		Config:      mustSMSC(t, secret),
+		Persistence: smsc.NewMemory(),
+	})
+	h := &Handlers{Provider: p, Lookup: &lookup.Worker{}}
+	payload := map[string]any{
+		"phone":  "79139447008",
+		"status": "1",
+		"err":    "0",
+	}
+	base := ":79139447008:1:" + secret
+	sum := md5.Sum([]byte(base))
+	payload["md5"] = hex.EncodeToString(sum[:])
+	body, _ := json.Marshal(payload)
+	req := httptest.NewRequest(http.MethodPost, "/internal/smsc/callback", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	h.Callback(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var out map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	if out["applied"] != false {
+		t.Fatalf("no store: applied=%v", out["applied"])
 	}
 }
 

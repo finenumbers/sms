@@ -81,10 +81,12 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 
 	applied := false
 	duplicate := false
-	if h.Lookup != nil && result.ProviderMessageID != "" {
+	reason := ""
+	phoneDigits := lookup.CallbackPhoneDigits(result.Normalized.PhoneE164)
+	if h.Lookup != nil && (result.ProviderMessageID != "" || phoneDigits != "") {
 		res, applyErr := h.Lookup.ApplyIncoming(r.Context(), lookup.IncomingCallback{
 			ProviderMessageID: result.ProviderMessageID,
-			PhoneDigits:       smsc.ToPhoneDigits(result.Normalized.PhoneE164),
+			PhoneDigits:       phoneDigits,
 			Normalized:        result.Normalized,
 			SkipEnrich:        true,
 		})
@@ -93,8 +95,9 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 		} else {
 			applied = res.Applied || res.Duplicate
 			duplicate = res.Duplicate
-			if callbackID, parseErr := uuid.Parse(result.ProviderCallbackID); parseErr == nil {
-				if res.Reason != "not_found" || res.Applied || res.Duplicate {
+			reason = res.Reason
+			if lookup.ShouldConcludeCallback(res) {
+				if callbackID, parseErr := uuid.Parse(result.ProviderCallbackID); parseErr == nil {
 					if err := h.Lookup.ConcludeCallback(r.Context(), callbackID, res); err != nil && h.Log != nil {
 						h.Log.Error("smsc callback conclude", "err", err)
 					}
@@ -115,6 +118,7 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 			Detail: map[string]any{
 				"applied":    applied,
 				"duplicate":  duplicate,
+				"reason":     reason,
 				"deduped":    result.Deduplicated,
 				"message_id": result.ProviderMessageID,
 			},

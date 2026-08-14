@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -49,6 +52,38 @@ func pickCallbackItems(byID, byPhone []sqlcdb.LookupItem) (sqlcdb.LookupItem, st
 	default:
 		return sqlcdb.LookupItem{}, "not_found"
 	}
+}
+
+// CallbackPhoneDigits normalizes a callback phone the same way create stores
+// lookup_items.phone_digits (digits only, RU 8→7 / 9XXXXXXXXX→79).
+func CallbackPhoneDigits(raw string) string {
+	if raw == "" {
+		return ""
+	}
+	e164, err := NormalizePhoneE164(raw)
+	if err != nil {
+		return PhoneDigits(raw)
+	}
+	return PhoneDigits(e164)
+}
+
+// ShouldConcludeCallback is true only when the item was actually updated.
+// not_found / ambiguous / empty reason must stay unprocessed for worker replay.
+func ShouldConcludeCallback(res IncomingResult) bool {
+	return res.Applied || res.Duplicate
+}
+
+func shouldMarkStoredCallback(res IncomingResult, age time.Duration) bool {
+	if ShouldConcludeCallback(res) {
+		return true
+	}
+	if res.Reason == "ambiguous" {
+		return false
+	}
+	if res.Reason == "not_found" || res.Reason == "" || res.Reason == "phone_mismatch" {
+		return age >= callbackNotFoundTTL
+	}
+	return false
 }
 
 func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (IncomingResult, error) {
@@ -110,7 +145,21 @@ func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (Incomi
 	}, nil
 }
 
-func (w *Worker) applyStoredCallbacks(ctx context.Context, deadline time.Time) (int, error) {
+// DrainCallbacks applies stored SMSC callbacks and finalizes jobs that became
+// ready. No Tick HTTP budget: this is DB-only (SkipEnrich).
+func (w *Worker) DrainCallbacks(ctx context.Context) (int, error) {
+	if w == nil || w.store == nil {
+		return 0, nil
+	}
+	n, err := w.applyStoredCallbacks(ctx)
+	if err != nil {
+		return n, err
+	}
+	f, err := w.finalizeReady(ctx)
+	return n + f, err
+}
+
+func (w *Worker) applyStoredCallbacks(ctx context.Context) (int, error) {
 	if w.store == nil {
 		return 0, nil
 	}
@@ -120,9 +169,6 @@ func (w *Worker) applyStoredCallbacks(ctx context.Context, deadline time.Time) (
 	}
 	n := 0
 	for i := range rows {
-		if !canStartLookupIO(w.now(), deadline) {
-			break
-		}
 		if w.applyStoredCallback(ctx, rows[i]) {
 			n++
 		}
@@ -152,7 +198,7 @@ func (w *Worker) ConcludeCallback(ctx context.Context, callbackID uuid.UUID, res
 	})
 }
 
-func (w *Worker) applyStoredCallback(ctx context.Context, row sqlcdb.ProviderLookupCallback) bool {
+func incomingFromStored(row sqlcdb.ProviderLookupCallback) IncomingCallback {
 	id := ""
 	if row.ProviderMessageID != nil {
 		id = *row.ProviderMessageID
@@ -161,25 +207,36 @@ func (w *Worker) applyStoredCallback(ctx context.Context, row sqlcdb.ProviderLoo
 	if len(row.NormalizedResult) > 0 {
 		_ = json.Unmarshal(row.NormalizedResult, &normalized)
 	}
-	phone := ""
+	phone := CallbackPhoneDigits(normalized.PhoneE164)
 	if obj, ok := rawObject(row.RawPayload); ok {
-		phone = smsc.ToPhoneDigits(asCallbackPhone(obj))
+		if phone == "" {
+			phone = CallbackPhoneDigits(asCallbackPhone(obj))
+		}
 		if id == "" {
 			id = asStringAny(obj["id"])
 		}
 	}
-	res, err := w.ApplyIncoming(ctx, IncomingCallback{
+	return IncomingCallback{
 		ProviderMessageID: id,
 		PhoneDigits:       phone,
 		Normalized:        normalized,
-	})
+		SkipEnrich:        true,
+	}
+}
+
+func (w *Worker) applyStoredCallback(ctx context.Context, row sqlcdb.ProviderLookupCallback) bool {
+	res, err := w.ApplyIncoming(ctx, incomingFromStored(row))
 	if err != nil {
 		if w.log != nil {
 			w.log.Error("lookup callback apply", "callback_id", row.ID, "err", err)
 		}
 		return false
 	}
-	if res.Reason == "not_found" && w.now().Sub(row.CreatedAt) < callbackNotFoundTTL {
+	now := time.Now().UTC()
+	if w.now != nil {
+		now = w.now()
+	}
+	if !shouldMarkStoredCallback(res, now.Sub(row.CreatedAt)) {
 		return false
 	}
 	var processErr *string
@@ -229,8 +286,21 @@ func asStringAny(v any) string {
 	if v == nil {
 		return ""
 	}
-	if s, ok := v.(string); ok {
-		return s
+	switch n := v.(type) {
+	case string:
+		return n
+	case json.Number:
+		return n.String()
+	case float64:
+		if n == math.Trunc(n) && !math.IsInf(n, 0) && !math.IsNaN(n) {
+			return strconv.FormatInt(int64(n), 10)
+		}
+		return strconv.FormatFloat(n, 'f', -1, 64)
+	case int:
+		return strconv.Itoa(n)
+	case int64:
+		return strconv.FormatInt(n, 10)
+	default:
+		return fmt.Sprint(v)
 	}
-	return ""
 }

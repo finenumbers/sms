@@ -60,7 +60,7 @@ SET
     status = CASE
         WHEN sqlc.arg(delivered)::boolean THEN 'delivered'::sms_status
         WHEN sqlc.arg(sent)::boolean THEN 'sent'::sms_status
-        ELSE 'accepted'::sms_status
+        ELSE status
     END,
     accepted_at = COALESCE(accepted_at, now()),
     sent_at = CASE

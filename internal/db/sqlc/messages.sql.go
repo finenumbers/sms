@@ -586,7 +586,7 @@ SET
     status = CASE
         WHEN $4::boolean THEN 'delivered'::sms_status
         WHEN $5::boolean THEN 'sent'::sms_status
-        ELSE 'accepted'::sms_status
+        ELSE status
     END,
     accepted_at = COALESCE(accepted_at, now()),
     sent_at = CASE

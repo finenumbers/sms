@@ -15,6 +15,30 @@ func TestParseDLRProvisionalFixture(t *testing.T) {
 	}
 }
 
+func TestParseLiveDLRCallback(t *testing.T) {
+	rows := ParseCallbacks("", "application/json", fixture(t, "dlr_callback.json"))
+	if len(rows) != 1 {
+		t.Fatalf("rows=%d", len(rows))
+	}
+	row := rows[0]
+	if row.SMSID != "0ca3c3ed-97f1-11f1-a65b-000c296c1599" {
+		t.Fatalf("sms_id %+v", row)
+	}
+	if !row.Sent || row.Delivered || row.Failed {
+		t.Fatalf("status flags %+v", row)
+	}
+	if row.Status != "2" {
+		t.Fatalf("status %+v", row)
+	}
+}
+
+func TestParseMessageStatusUnknownIsNotSent(t *testing.T) {
+	rows := ParseCallbacks("", "application/json", []byte(`{"id":"abc","message_status":7}`))
+	if len(rows) != 1 || rows[0].Sent || rows[0].Delivered || rows[0].Failed || rows[0].Status != "7" {
+		t.Fatalf("%+v", rows)
+	}
+}
+
 func TestParseDLRFailedFixture(t *testing.T) {
 	rows := ParseCallbacks("", "application/json", fixture(t, "dlr_callback.failed.provisional.json"))
 	if len(rows) != 1 || !rows[0].Failed || rows[0].Delivered {

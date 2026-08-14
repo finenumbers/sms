@@ -132,6 +132,8 @@ func (w *Worker) applyDLR(ctx context.Context, row runexis.Callback) (*uuid.UUID
 	if row.Status != "" {
 		status = &row.Status
 	}
+	// No sent/delivered: still persist provider_status. SQL ELSE keeps
+	// current sms status (must not force accepted over sent).
 	if _, err := w.store.Queries.UpdateSmsMessageFromStatistic(ctx, sqlcdb.UpdateSmsMessageFromStatisticParams{
 		ProviderSmsID:  &row.SMSID,
 		ProviderStatus: status,

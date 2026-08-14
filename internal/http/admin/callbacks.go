@@ -95,6 +95,8 @@ func (h *Handlers) GetCallback(w http.ResponseWriter, r *http.Request) {
 		"content_type":    e.ContentType,
 		"headers":         jsonRaw(e.Headers),
 		"raw_body":        rawOut,
+		"parsed":          jsonRaw(e.Parsed),
+		"sms_message_id":  e.SmsMessageID,
 		"created_at":      e.CreatedAt.UTC().Format(time.RFC3339),
 		"processed_at":    e.ProcessedAt,
 		"idempotency_key": e.IdempotencyKey,

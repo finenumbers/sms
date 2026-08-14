@@ -14,11 +14,11 @@
 2. Неверный или отсутствующий `ingress_token` → **404** (не 401)
 3. **Синхронно записать raw** в `provider_callback_events` (path без токена: `/internal/runexis/{dlr|mo}/*`)
 4. Ответить **200** только после успешного persist. Дубликат по `idempotency_key` тоже 200. Ошибка БД → 5xx, не 200
-5. Worker нормализует адаптером (`internal/runexis.ParseCallbacks`) по provisional-фикстурам полей statistic (`sms_id`, `sent`, `delivered`, `sender_number`, `receiver_number`, `message`). Неузнанный payload: `processed_at` + `parsed.skipped=unrecognized`; raw остаётся в админке. Live capture должен заменить файлы в `docs/reference/runexis/fixtures/`.
+5. Worker нормализует адаптером (`internal/runexis.ParseCallbacks`). Live DLR (2026-08-14): `id` (= send `data.id` / statistic `sms_id`) + `message_status`. Код `2` пока ставит только `sent`; `delivered` — из statistic, пока поддержка Runexis не подтвердит enum. Поля statistic `sent`/`delivered` по-прежнему читаются, если придут. Неузнанный payload: `processed_at` + `parsed.skipped=unrecognized`; raw остаётся в админке. Failed DLR и MO — ещё provisional.
 
 Идемпотентность: `sha256(method + path + query + body)`.
 
-DLR с `sms_id` обновляет исходящее (`delivered` / `sent` / `failed`). MO без assignment: `client_id` NULL, в ЛК не показывается. Reconcile statistic по-прежнему подстраховывает `accepted|sent` старше порога и inbox `incoming=true`. Просмотр raw: `GET /admin/v1/callbacks`.
+DLR с `id`/`sms_id` обновляет исходящее: `message_status=2` → `sent`; явные `delivered`/`failed` из тела — как раньше; иначе статус SMS не понижается (`UpdateSmsMessageFromStatistic` ELSE оставляет текущий). Reconcile statistic подстраховывает `accepted|sent` старше порога и inbox `incoming=true`. Просмотр raw и `parsed`: `GET /admin/v1/callbacks/{id}`.
 
 Ротация токена: `PATCH /admin/v1/settings` с `rotate_ingress_token: true` — plaintext один раз в ответе, в БД только hash. Регистрация URL: `POST /admin/v1/settings/runexis/callbacks` с тем же токеном → `PATCH` глобальных `dlr-url` и `hook-url`. Регистрация отклоняет `localhost` / http / частные IP — Runexis должен достучаться до `https://{API_HOST}`.
 

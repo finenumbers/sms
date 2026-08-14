@@ -8,9 +8,10 @@ import (
 	"strings"
 )
 
-// Callback is a normalized DLR or MO payload. Field names follow the statistic
-// wire (the only documented SMS shape). Live capture should replace the
-// provisional fixtures; this parser stays conservative.
+// Callback is a normalized DLR or MO payload.
+// Live DLR (2026-08-14) has id + message_status, not statistic sent/delivered.
+// message_status=2 → sent only; delivered stays statistic until Runexis
+// documents the enum (support ticket open). Do not invent other codes.
 type Callback struct {
 	SMSID     string `json:"sms_id,omitempty"`
 	From      string `json:"sender_number,omitempty"`
@@ -138,6 +139,15 @@ func callbackFromMap(m map[string]any) (Callback, bool) {
 		Failed:    firstBool(m, "failed"),
 		PDU:       firstInt(m, "pdu"),
 	}
+	if n, ok := firstIntOK(m, "message_status"); ok {
+		if row.Status == "" {
+			row.Status = strconv.Itoa(n)
+		}
+		// Observed live: 2 on a later-delivered SMS. Not proven as "delivered".
+		if n == 2 {
+			row.Sent = true
+		}
+	}
 	if row.SMSID == "" && row.From == "" && row.To == "" && row.Text == "" && row.Status == "" && !row.Sent && !row.Delivered && !row.Failed {
 		return Callback{}, false
 	}
@@ -237,21 +247,32 @@ func firstBool(m map[string]any, keys ...string) bool {
 }
 
 func firstInt(m map[string]any, keys ...string) int {
+	n, _ := firstIntOK(m, keys...)
+	return n
+}
+
+func firstIntOK(m map[string]any, keys ...string) (int, bool) {
 	for _, k := range keys {
-		if v, ok := m[k]; ok {
-			switch t := v.(type) {
-			case float64:
-				return int(t)
-			case json.Number:
-				n, _ := t.Int64()
-				return int(n)
-			case string:
-				n, err := strconv.Atoi(strings.TrimSpace(t))
-				if err == nil {
-					return n
-				}
+		v, ok := m[k]
+		if !ok || v == nil {
+			continue
+		}
+		switch t := v.(type) {
+		case float64:
+			return int(t), true
+		case json.Number:
+			n, err := t.Int64()
+			if err != nil {
+				continue
 			}
+			return int(n), true
+		case string:
+			n, err := strconv.Atoi(strings.TrimSpace(t))
+			if err != nil {
+				continue
+			}
+			return n, true
 		}
 	}
-	return 0
+	return 0, false
 }

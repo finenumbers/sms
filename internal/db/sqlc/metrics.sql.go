@@ -10,6 +10,68 @@ import (
 	"time"
 )
 
+const countLookupItemsByStatus = `-- name: CountLookupItemsByStatus :many
+SELECT status, count(*)::bigint AS n
+FROM lookup_items
+GROUP BY status
+`
+
+type CountLookupItemsByStatusRow struct {
+	Status LookupItemStatus `json:"status"`
+	N      int64            `json:"n"`
+}
+
+func (q *Queries) CountLookupItemsByStatus(ctx context.Context) ([]CountLookupItemsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, countLookupItemsByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountLookupItemsByStatusRow
+	for rows.Next() {
+		var i CountLookupItemsByStatusRow
+		if err := rows.Scan(&i.Status, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const countLookupJobsByStatus = `-- name: CountLookupJobsByStatus :many
+SELECT status, count(*)::bigint AS n
+FROM lookup_jobs
+GROUP BY status
+`
+
+type CountLookupJobsByStatusRow struct {
+	Status LookupJobStatus `json:"status"`
+	N      int64           `json:"n"`
+}
+
+func (q *Queries) CountLookupJobsByStatus(ctx context.Context) ([]CountLookupJobsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, countLookupJobsByStatus)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CountLookupJobsByStatusRow
+	for rows.Next() {
+		var i CountLookupJobsByStatusRow
+		if err := rows.Scan(&i.Status, &i.N); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const countSendJobsByStatus = `-- name: CountSendJobsByStatus :many
 SELECT status, count(*)::bigint AS n
 FROM send_jobs
@@ -85,77 +147,17 @@ func (q *Queries) CountUnprocessedCallbacks(ctx context.Context) (int64, error) 
 	return n, err
 }
 
-const countLookupItemsByStatus = `-- name: CountLookupItemsByStatus :many
-SELECT status, count(*)::bigint AS n
-FROM lookup_items
-GROUP BY status
-`
-
-type CountLookupItemsByStatusRow struct {
-	Status LookupItemStatus `json:"status"`
-	N      int64            `json:"n"`
-}
-
-func (q *Queries) CountLookupItemsByStatus(ctx context.Context) ([]CountLookupItemsByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countLookupItemsByStatus)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CountLookupItemsByStatusRow
-	for rows.Next() {
-		var i CountLookupItemsByStatusRow
-		if err := rows.Scan(&i.Status, &i.N); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const countLookupJobsByStatus = `-- name: CountLookupJobsByStatus :many
-SELECT status, count(*)::bigint AS n
-FROM lookup_jobs
-GROUP BY status
-`
-
-type CountLookupJobsByStatusRow struct {
-	Status LookupJobStatus `json:"status"`
-	N      int64           `json:"n"`
-}
-
-func (q *Queries) CountLookupJobsByStatus(ctx context.Context) ([]CountLookupJobsByStatusRow, error) {
-	rows, err := q.db.Query(ctx, countLookupJobsByStatus)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CountLookupJobsByStatusRow
-	for rows.Next() {
-		var i CountLookupJobsByStatusRow
-		if err := rows.Scan(&i.Status, &i.N); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const oldestUnprocessedLookupCallbackAt = `-- name: OldestUnprocessedLookupCallbackAt :one
-SELECT min(created_at) AS created_at
+SELECT created_at
 FROM provider_lookup_callbacks
 WHERE processed_at IS NULL
+ORDER BY created_at ASC
+LIMIT 1
 `
 
-func (q *Queries) OldestUnprocessedLookupCallbackAt(ctx context.Context) (*time.Time, error) {
+func (q *Queries) OldestUnprocessedLookupCallbackAt(ctx context.Context) (time.Time, error) {
 	row := q.db.QueryRow(ctx, oldestUnprocessedLookupCallbackAt)
-	var createdAt *time.Time
-	err := row.Scan(&createdAt)
-	return createdAt, err
+	var created_at time.Time
+	err := row.Scan(&created_at)
+	return created_at, err
 }

@@ -35,8 +35,8 @@ func (stubStore) CountLookupJobsByStatus(context.Context) ([]sqlcdb.CountLookupJ
 	return nil, nil
 }
 func (stubStore) CountOpenLookupHolds(context.Context) (int64, error) { return 4, nil }
-func (stubStore) OldestUnprocessedLookupCallbackAt(context.Context) (*time.Time, error) {
-	return nil, nil
+func (stubStore) OldestUnprocessedLookupCallbackAt(context.Context) (time.Time, error) {
+	return time.Time{}, nil
 }
 
 type stubRuntime struct {

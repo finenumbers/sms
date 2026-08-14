@@ -2677,6 +2677,7 @@ type TransitionLookupItemParams struct {
 	FromStatuses      []LookupItemStatus `json:"from_statuses"`
 }
 
+// billing_action is written only by SetLookupItemBillingAction inside settle.
 func (q *Queries) TransitionLookupItem(ctx context.Context, arg TransitionLookupItemParams) (LookupItem, error) {
 	row := q.db.QueryRow(ctx, transitionLookupItem,
 		arg.ToStatus,

@@ -133,7 +133,7 @@ type StoreStats interface {
 	CountLookupItemsByStatus(ctx context.Context) ([]sqlcdb.CountLookupItemsByStatusRow, error)
 	CountLookupJobsByStatus(ctx context.Context) ([]sqlcdb.CountLookupJobsByStatusRow, error)
 	CountOpenLookupHolds(ctx context.Context) (int64, error)
-	OldestUnprocessedLookupCallbackAt(ctx context.Context) (*time.Time, error)
+	OldestUnprocessedLookupCallbackAt(ctx context.Context) (time.Time, error)
 }
 
 type LookupRuntime interface {
@@ -212,8 +212,8 @@ func (c StoreCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(lookupHoldsDesc, prometheus.GaugeValue, float64(n))
 	}
 	lag := 0.0
-	if at, err := c.Stats.OldestUnprocessedLookupCallbackAt(ctx); err == nil && at != nil {
-		lag = time.Since(*at).Seconds()
+	if at, err := c.Stats.OldestUnprocessedLookupCallbackAt(ctx); err == nil && !at.IsZero() {
+		lag = time.Since(at).Seconds()
 		if lag < 0 {
 			lag = 0
 		}

@@ -24,6 +24,8 @@ FROM lookup_jobs
 GROUP BY status;
 
 -- name: OldestUnprocessedLookupCallbackAt :one
-SELECT min(created_at) AS created_at
+SELECT created_at
 FROM provider_lookup_callbacks
-WHERE processed_at IS NULL;
+WHERE processed_at IS NULL
+ORDER BY created_at ASC
+LIMIT 1;

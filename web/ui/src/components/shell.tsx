@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import logo from "../assets/logo.png";
+import logoLogin from "../assets/logo-login.png";
 
 export type NavItem = { to: string; label: string; disabled?: boolean } | { separator: true };
 
@@ -78,12 +79,23 @@ export function Shell({
   );
 }
 
-export function LoginLayout({ title, children }: { title: string; children: ReactNode }) {
+export function LoginLayout({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+}) {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4">
       <div className="w-full max-w-sm rounded-lg border border-zinc-200 bg-white p-6 shadow-sm">
-        <img src={logo} alt="fine numbers" className="mx-auto mb-5 block w-[80%]" />
-        <h1 className="mb-4 text-lg font-semibold">{title}</h1>
+        <img src={logoLogin} alt="fine numbers" className="mx-auto mb-5 block w-[80%]" />
+        <div className="mb-4">
+          <h1 className="text-lg font-semibold">{title}</h1>
+          {subtitle ? <p className="mt-1 text-sm text-zinc-500">{subtitle}</p> : null}
+        </div>
         {children}
       </div>
     </div>

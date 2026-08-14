@@ -17,7 +17,7 @@ export function LoginPage() {
     },
   });
   return (
-    <LoginLayout title="Вход в админку">
+    <LoginLayout title="Finenumbers SMS Service" subtitle="Админ панель">
       <form
         onSubmit={(e) => {
           e.preventDefault();

@@ -191,7 +191,7 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
               <button
                 type="button"
                 className={`w-full rounded-md border border-dashed px-3 py-8 text-center text-sm ${
-                  dragOver ? "border-blue-500 bg-blue-50" : "border-zinc-300 bg-zinc-50"
+                  dragOver ? "border-[#FBE95F] bg-[#FBE95F]/30" : "border-zinc-300 bg-zinc-50"
                 }`}
                 onClick={() => fileRef.current?.click()}
                 onDragOver={(e) => {

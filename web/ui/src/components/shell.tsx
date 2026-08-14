@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
 import logo from "../assets/logo.png";
 
-export type NavItem = { to: string; label: string };
+export type NavItem = { to: string; label: string } | { separator: true };
 
 const appVersion = String(import.meta.env.VITE_APP_VERSION ?? "dev").replace(/^v/i, "");
 
@@ -37,20 +37,24 @@ export function Shell({
       </header>
       <nav className="flex min-h-0 flex-col overflow-hidden px-3 pb-3" style={{ backgroundColor: "#212124" }}>
         <div className="min-h-0 flex-1 overflow-y-auto pt-3">
-          {nav.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === "/"}
-              className={({ isActive }) =>
-                `mb-1 block rounded-md px-3 py-2 text-sm font-bold ${
-                  isActive ? "bg-[#FBE95F] text-black" : "text-white hover:bg-[#5A543B]"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          {nav.map((item, i) =>
+            "separator" in item ? (
+              <div key={`sep-${i}`} className="my-2 border-t border-white/20" />
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={item.to === "/"}
+                className={({ isActive }) =>
+                  `mb-1 block rounded-md px-3 py-2 text-sm font-bold ${
+                    isActive ? "bg-[#FBE95F] text-black" : "text-white hover:bg-[#5A543B]"
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ),
+          )}
         </div>
         <div className="mt-3 shrink-0">
           <div className="px-3 py-2 text-xs text-white/60">Версия {appVersion}</div>

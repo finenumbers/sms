@@ -79,11 +79,13 @@ function Layout({ children }: { children: ReactNode }) {
         { to: "/messages", label: "Исходящие SMS" },
         { to: "/inbox", label: "Входящие SMS" },
         { to: "/campaigns", label: "Рассылки SMS" },
+        { separator: true },
         { to: "/hlr", label: "HLR Lookup" },
         { to: "/silent-sms", label: "Silent SMS" },
         { to: "/lookups", label: "Проверки HLR / SSMS" },
-        { to: "/webhooks", label: "Webhooks" },
+        { separator: true },
         { to: "/billing", label: "Биллинг" },
+        { to: "/webhooks", label: "Webhooks" },
         { to: "/api-keys", label: "API-ключи" },
       ]}
     >

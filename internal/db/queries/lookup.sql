@@ -94,9 +94,17 @@ WHERE i.id IN (
 )
 RETURNING *;
 
+-- name: StampLookupItemClientSendID :exec
+UPDATE lookup_items
+SET provider_code = sqlc.arg(provider_code),
+    provider_message_id = sqlc.arg(provider_message_id),
+    updated_at = now()
+WHERE id = sqlc.arg(id)
+  AND (provider_message_id IS NULL OR provider_message_id = '');
+
 -- name: ClaimReservedLookupItemsFair :many
 UPDATE lookup_items AS i
-SET updated_at = now()
+SET status = status
 WHERE i.id IN (
     SELECT j.id
     FROM (
@@ -277,8 +285,8 @@ WHERE r.kind = 'send'
   AND r.created_at >= sqlc.arg(created_after)
   AND i.status IN ('queued', 'reserved', 'pending')
   AND (
-    r.provider_message_id = sqlc.arg(callback_id)
-    OR r.request_payload->>'id' = sqlc.arg(callback_id)
+    r.provider_message_id = sqlc.arg(callback_id)::text
+    OR r.request_payload->>'id' = sqlc.arg(callback_id)::text
   )
 ORDER BY i.created_at, i.id;
 
@@ -296,6 +304,14 @@ SET processed_at = now(),
     job_item_id = COALESCE(sqlc.narg(job_item_id), job_item_id),
     client_id = COALESCE(sqlc.narg(client_id), client_id)
 WHERE id = sqlc.arg(id);
+
+-- name: ReopenUnappliedLookupCallbacks :execrows
+UPDATE provider_lookup_callbacks
+SET processed_at = NULL,
+    process_error = NULL
+WHERE processed_at IS NOT NULL
+  AND created_at >= sqlc.arg(created_after)
+  AND COALESCE(process_error, '') IN ('', 'not_found', 'item_not_found', 'ambiguous', 'phone_mismatch');
 
 -- name: ListStalePendingLookupItems :many
 SELECT *

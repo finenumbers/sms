@@ -2,8 +2,11 @@ package lookup
 
 import (
 	"encoding/json"
+	"strconv"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	sqlcdb "finenumbers/sms/internal/db/sqlc"
 	"finenumbers/sms/internal/smsc"
@@ -48,6 +51,28 @@ func TestCallbackPhonesMatchLast10(t *testing.T) {
 	}
 	if callbackPhonesMatch("79607977373", "9607977374") {
 		t.Fatal("different tail")
+	}
+}
+
+func TestClientSendIDMatchesSubmitKey(t *testing.T) {
+	itemID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	got := ClientSendID(sqlcdb.LookupCheckTypeHlr, itemID)
+	want := strconv.Itoa(smsc.ClientIDFromKey(smsc.SendIdempotencyKey(smsc.CheckHLR, itemID.String())))
+	if got != want || got == "" || got == "0" {
+		t.Fatalf("client send id=%s want=%s", got, want)
+	}
+	if ClientSendID(sqlcdb.LookupCheckTypePing, itemID) == got {
+		t.Fatal("ping and hlr must hash differently")
+	}
+}
+
+func TestPickCallbackItemsTwoPhonesStayAmbiguous(t *testing.T) {
+	_, reason := pickCallbackItems(nil, []sqlcdb.LookupItem{
+		{PhoneDigits: "79994504444"},
+		{PhoneDigits: "79994504444"},
+	})
+	if reason != "ambiguous" {
+		t.Fatalf("must not pick newest, reason=%s", reason)
 	}
 }
 
@@ -103,6 +128,9 @@ func TestShouldConcludeCallback(t *testing.T) {
 func TestShouldMarkStoredCallback(t *testing.T) {
 	fresh := 10 * time.Minute
 	old := callbackNotFoundTTL + time.Second
+	if shouldMarkStoredCallback(IncomingResult{Reason: "item_not_found"}, fresh) {
+		t.Fatal("fresh item_not_found waits")
+	}
 	if shouldMarkStoredCallback(IncomingResult{Reason: "not_found"}, fresh) {
 		t.Fatal("fresh not_found waits")
 	}

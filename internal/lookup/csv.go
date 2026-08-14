@@ -385,6 +385,9 @@ func (s *Service) MaterializeCSVJob(ctx context.Context, preview sqlcdb.LookupCs
 	if _, err := q.InsertLookupItems(ctx, rows); err != nil {
 		return err
 	}
+	if err := stampClientSendIDs(ctx, q, job.ID); err != nil {
+		return err
+	}
 	if err := s.billing.ReserveForLookupJob(ctx, q, job); err != nil {
 		msg := err.Error()
 		code := billingCode(err)

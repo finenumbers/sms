@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -17,6 +18,7 @@ import (
 	"finenumbers/sms/internal/db"
 	sqlcdb "finenumbers/sms/internal/db/sqlc"
 	"finenumbers/sms/internal/settings"
+	"finenumbers/sms/internal/smsc"
 	"finenumbers/sms/internal/webhooks"
 )
 
@@ -249,6 +251,9 @@ func (s *Service) create(ctx context.Context, qin *sqlcdb.Queries, in CreateInpu
 	if _, err := q.InsertLookupItems(ctx, rows); err != nil {
 		return CreateResult{}, err
 	}
+	if err := stampClientSendIDs(ctx, q, job.ID); err != nil {
+		return CreateResult{}, err
+	}
 	if err := s.billing.ReserveForLookupJob(ctx, q, job); err != nil {
 		return CreateResult{}, mapBillingErr(err)
 	}
@@ -270,6 +275,40 @@ func (s *Service) create(ctx context.Context, qin *sqlcdb.Queries, in CreateInpu
 		DeduplicatedPhoneCount: deduped,
 		WorkUnits:              len(phones),
 	}, nil
+}
+
+// ClientSendID is the SMSC client-assigned send.php id (31-bit hash).
+// Same key submit uses: SEND:{hlr|ping}:{item_uuid}.
+func ClientSendID(checkType sqlcdb.LookupCheckType, itemID uuid.UUID) string {
+	ct := smsc.CheckHLR
+	if checkType == sqlcdb.LookupCheckTypePing {
+		ct = smsc.CheckPing
+	}
+	return strconv.Itoa(smsc.ClientIDFromKey(smsc.SendIdempotencyKey(ct, itemID.String())))
+}
+
+func stampClientSendIDs(ctx context.Context, q *sqlcdb.Queries, jobID uuid.UUID) error {
+	if q == nil {
+		return nil
+	}
+	items, err := q.ListLookupItemsByJob(ctx, jobID)
+	if err != nil {
+		return err
+	}
+	for i := range items {
+		if deref(items[i].ProviderMessageID) != "" {
+			continue
+		}
+		id := ClientSendID(items[i].CheckType, items[i].ID)
+		if err := q.StampLookupItemClientSendID(ctx, sqlcdb.StampLookupItemClientSendIDParams{
+			ProviderCode:      smsc.ProviderCode,
+			ProviderMessageID: &id,
+			ID:                items[i].ID,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) FailJob(ctx context.Context, jobID uuid.UUID, code, msg string) (sqlcdb.LookupJob, error) {

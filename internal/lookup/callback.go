@@ -85,7 +85,7 @@ func shouldMarkStoredCallback(res IncomingResult, age time.Duration) bool {
 	if res.Reason == "ambiguous" {
 		return false
 	}
-	if res.Reason == "not_found" || res.Reason == "" || res.Reason == "phone_mismatch" {
+	if res.Reason == "not_found" || res.Reason == "item_not_found" || res.Reason == "" || res.Reason == "phone_mismatch" || res.Reason == "lifecycle_unmapped" {
 		return age >= callbackNotFoundTTL
 	}
 	return false
@@ -111,15 +111,17 @@ func (w *Worker) lookupCallbackItems(ctx context.Context, in IncomingCallback) (
 		}
 		byID = rows
 		if len(byID) == 0 {
-			callbackID := in.ProviderMessageID
 			rows, err = w.store.Queries.ListOpenLookupItemsForCallbackSendID(ctx, sqlcdb.ListOpenLookupItemsForCallbackSendIDParams{
 				CreatedAfter: w.callbackCreatedAfter(),
-				CallbackID:   &callbackID,
+				CallbackID:   in.ProviderMessageID,
 			})
 			if err != nil {
-				return nil, nil, err
+				if w.log != nil {
+					w.log.Error("lookup callback send-id", "id", in.ProviderMessageID, "err", err)
+				}
+			} else {
+				byID = rows
 			}
-			byID = rows
 		}
 	}
 	var byPhone []sqlcdb.LookupItem
@@ -179,6 +181,13 @@ func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (Incomi
 			return IncomingResult{Reason: "not_found"}, nil
 		}
 		return IncomingResult{}, err
+	}
+	if !applied.Applied && !applied.Duplicate && !applied.BecameTerminal {
+		reason := applied.Reason
+		if reason == "" {
+			reason = "lifecycle_unmapped"
+		}
+		return IncomingResult{Reason: reason, Item: applied.Item}, nil
 	}
 	return IncomingResult{
 		Applied:   applied.Applied || applied.BecameTerminal,

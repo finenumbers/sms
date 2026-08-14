@@ -427,7 +427,7 @@ func (q *Queries) ClaimQueuedLookupItemsFair(ctx context.Context, arg ClaimQueue
 
 const claimReservedLookupItemsFair = `-- name: ClaimReservedLookupItemsFair :many
 UPDATE lookup_items AS i
-SET updated_at = now()
+SET status = status
 WHERE i.id IN (
     SELECT j.id
     FROM (
@@ -2177,15 +2177,15 @@ WHERE r.kind = 'send'
   AND r.created_at >= $1
   AND i.status IN ('queued', 'reserved', 'pending')
   AND (
-    r.provider_message_id = $2
-    OR r.request_payload->>'id' = $2
+    r.provider_message_id = $2::text
+    OR r.request_payload->>'id' = $2::text
   )
 ORDER BY i.created_at, i.id
 `
 
 type ListOpenLookupItemsForCallbackSendIDParams struct {
 	CreatedAfter time.Time `json:"created_after"`
-	CallbackID   *string   `json:"callback_id"`
+	CallbackID   string    `json:"callback_id"`
 }
 
 func (q *Queries) ListOpenLookupItemsForCallbackSendID(ctx context.Context, arg ListOpenLookupItemsForCallbackSendIDParams) ([]LookupItem, error) {
@@ -2824,6 +2824,23 @@ func (q *Queries) RefreshLookupJobCounters(ctx context.Context, id uuid.UUID) (L
 	return i, err
 }
 
+const reopenUnappliedLookupCallbacks = `-- name: ReopenUnappliedLookupCallbacks :execrows
+UPDATE provider_lookup_callbacks
+SET processed_at = NULL,
+    process_error = NULL
+WHERE processed_at IS NOT NULL
+  AND created_at >= $1
+  AND COALESCE(process_error, '') IN ('', 'not_found', 'item_not_found', 'ambiguous', 'phone_mismatch')
+`
+
+func (q *Queries) ReopenUnappliedLookupCallbacks(ctx context.Context, createdAfter time.Time) (int64, error) {
+	result, err := q.db.Exec(ctx, reopenUnappliedLookupCallbacks, createdAfter)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const rollbackLookupCSVPreviewConsuming = `-- name: RollbackLookupCSVPreviewConsuming :one
 UPDATE lookup_csv_previews
 SET status = 'ready',
@@ -2851,6 +2868,26 @@ func (q *Queries) RollbackLookupCSVPreviewConsuming(ctx context.Context, id uuid
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const stampLookupItemClientSendID = `-- name: StampLookupItemClientSendID :exec
+UPDATE lookup_items
+SET provider_code = $1,
+    provider_message_id = $2,
+    updated_at = now()
+WHERE id = $3
+  AND (provider_message_id IS NULL OR provider_message_id = '')
+`
+
+type StampLookupItemClientSendIDParams struct {
+	ProviderCode      string    `json:"provider_code"`
+	ProviderMessageID *string   `json:"provider_message_id"`
+	ID                uuid.UUID `json:"id"`
+}
+
+func (q *Queries) StampLookupItemClientSendID(ctx context.Context, arg StampLookupItemClientSendIDParams) error {
+	_, err := q.db.Exec(ctx, stampLookupItemClientSendID, arg.ProviderCode, arg.ProviderMessageID, arg.ID)
+	return err
 }
 
 const transitionLookupItem = `-- name: TransitionLookupItem :one

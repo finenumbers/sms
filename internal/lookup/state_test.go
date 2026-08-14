@@ -38,6 +38,9 @@ func TestMapLifecycle(t *testing.T) {
 	if !ok || got != sqlcdb.LookupItemStatusPending {
 		t.Fatal(got, ok)
 	}
+	if _, ok := MapLifecycleToItemStatus("", sqlcdb.LookupItemStatusReserved); ok {
+		t.Fatal("empty lifecycle must not map")
+	}
 }
 
 func TestDeriveJobTerminalStatus(t *testing.T) {

@@ -508,6 +508,7 @@ type ApplyResult struct {
 	Duplicate      bool
 	Item           sqlcdb.LookupItem
 	BecameTerminal bool
+	Reason         string
 }
 
 func (w *Worker) ApplyProviderUpdate(ctx context.Context, in ApplyInput) (ApplyResult, error) {
@@ -549,7 +550,7 @@ func (w *Worker) ApplyProviderUpdate(ctx context.Context, in ApplyInput) (ApplyR
 	normalized := mergeNormalizedWithItem(in.Normalized, item)
 	next, ok := MapLifecycleToItemStatus(normalized.LifecycleStatus, item.Status)
 	if !ok {
-		return ApplyResult{Item: item}, nil
+		return ApplyResult{Item: item, Reason: "lifecycle_unmapped"}, nil
 	}
 	if !in.SkipEnrich && (next == sqlcdb.LookupItemStatusCompleted || next == sqlcdb.LookupItemStatusFailed) {
 		normalized, _ = w.enrichHLR(ctx, item, normalized, in.Deadline)
@@ -561,7 +562,7 @@ func (w *Worker) ApplyProviderUpdate(ctx context.Context, in ApplyInput) (ApplyR
 		patched, err := w.patchItem(ctx, item, normalized, sqlcdb.LookupItemStatusPending, from, false)
 		if err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
-				return ApplyResult{Item: item}, nil
+				return ApplyResult{Item: item, Reason: "race"}, nil
 			}
 			return ApplyResult{}, err
 		}
@@ -788,6 +789,13 @@ func (w *Worker) releaseRemainder(ctx context.Context, job sqlcdb.LookupJob) {
 }
 
 func (w *Worker) reconcile(ctx context.Context) error {
+	if n, err := w.store.Queries.ReopenUnappliedLookupCallbacks(ctx, w.now().Add(-24*time.Hour)); err != nil {
+		if w.log != nil {
+			w.log.Error("lookup callback reopen", "err", err)
+		}
+	} else if n > 0 && w.log != nil {
+		w.log.Info("lookup callbacks reopened", "n", n)
+	}
 	view, err := w.runtime(ctx)
 	if err != nil {
 		return err
@@ -821,7 +829,7 @@ func (w *Worker) reconcile(ctx context.Context) error {
 	timeout := time.Duration(view.LookupCheckTimeoutSec) * time.Second
 	for i := range staleReserved {
 		item := staleReserved[i]
-		if w.now().Sub(item.UpdatedAt) >= timeout {
+		if w.now().Sub(item.CreatedAt) >= timeout {
 			w.failItem(ctx, item, "reserved_stale_timeout", "RESERVED item exceeded check timeout without submit progress", true)
 		}
 	}

@@ -1,13 +1,26 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Badge, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Th, statusTone, withPage, formatMoney } from "ui";
+import {
+  Badge,
+  EmptyState,
+  ErrorBox,
+  INFINITE_PAGE_SIZE,
+  InfiniteSentinel,
+  PageHeader,
+  Select,
+  Table,
+  Td,
+  Th,
+  statusTone,
+  withPage,
+  formatMoney,
+} from "ui";
 import { api, type ClientRow, type LookupJob } from "../api";
 import { jobStatusLabel, lookupInflight, typeLabel } from "../lookup";
 
 export function JobsPage() {
   const [search] = useSearchParams();
-  const [offset, setOffset] = useState(0);
   const [clientId, setClientId] = useState(search.get("client_id") ?? "");
   const [checkType, setCheckType] = useState(search.get("check_type") ?? "");
   const [status, setStatus] = useState(search.get("status") ?? "");
@@ -16,28 +29,28 @@ export function JobsPage() {
     queryFn: () => api.get<{ items: ClientRow[] }>(withPage("/clients", 0, {}, 100)),
   });
   const names = Object.fromEntries((clients.data?.items ?? []).map((c) => [c.id, c.name]));
-  const list = useQuery({
-    queryKey: ["admin-lookup-jobs", offset, clientId, checkType, status],
-    queryFn: () =>
+  const list = useInfiniteQuery({
+    queryKey: ["admin-lookup-jobs", clientId, checkType, status],
+    queryFn: ({ pageParam }) =>
       api.get<{ items: LookupJob[]; total: number }>(
-        withPage("/lookups/jobs", offset, { client_id: clientId, check_type: checkType, status }),
+        withPage("/lookups/jobs", pageParam, { client_id: clientId, check_type: checkType, status }, INFINITE_PAGE_SIZE),
       ),
-    refetchInterval: (q) => ((q.state.data?.items ?? []).some((j) => lookupInflight(j.status)) ? 4000 : false),
+    initialPageParam: 0,
+    getNextPageParam: (last, _pages, lastParam) => {
+      const next = lastParam + last.items.length;
+      return next < last.total ? next : undefined;
+    },
+    refetchInterval: (q) =>
+      (q.state.data?.pages ?? []).some((p) => p.items.some((j) => lookupInflight(j.status))) ? 4000 : false,
   });
-  const items = list.data?.items ?? [];
+  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
     <div>
       <PageHeader title="Задания" />
       <p className="mb-3 text-sm text-zinc-500">Проверки HLR и Silent SMS по всем клиентам.</p>
       <div className="mb-3 grid gap-3 md:grid-cols-3">
-        <Select
-          value={clientId}
-          onChange={(e) => {
-            setClientId(e.target.value);
-            setOffset(0);
-          }}
-        >
+        <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">все клиенты</option>
           {(clients.data?.items ?? []).map((c) => (
             <option key={c.id} value={c.id}>
@@ -45,24 +58,12 @@ export function JobsPage() {
             </option>
           ))}
         </Select>
-        <Select
-          value={checkType}
-          onChange={(e) => {
-            setCheckType(e.target.value);
-            setOffset(0);
-          }}
-        >
+        <Select value={checkType} onChange={(e) => setCheckType(e.target.value)}>
           <option value="">все типы</option>
           <option value="hlr">HLR</option>
           <option value="ping">Silent SMS</option>
         </Select>
-        <Select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setOffset(0);
-          }}
-        >
+        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">все статусы</option>
           <option value="queued">в очереди</option>
           <option value="processing">выполняется</option>
@@ -108,8 +109,8 @@ export function JobsPage() {
           ))}
         </tbody>
       </Table>
+      <InfiniteSentinel disabled={!list.hasNextPage || list.isFetchingNextPage} onVisible={() => void list.fetchNextPage()} />
       {!list.isLoading && items.length === 0 ? <EmptyState>Заданий нет</EmptyState> : null}
-      <Pager offset={offset} limit={PAGE_SIZE} count={items.length} onChange={setOffset} />
     </div>
   );
 }

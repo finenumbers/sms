@@ -1,22 +1,42 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
-import { Alert, Badge, Button, Card, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Table, Td, Th, statusTone, withPage, formatMoney } from "ui";
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorBox,
+  INFINITE_PAGE_SIZE,
+  InfiniteSentinel,
+  PageHeader,
+  Table,
+  Td,
+  Th,
+  statusTone,
+  withPage,
+  formatMoney,
+} from "ui";
 import { api, downloadAdminFile, type ClientRow, type LookupItem, type LookupJob } from "../api";
 import { itemStatusLabel, jobStatusLabel, lookupInflight, resultLabel, sourceLabel, typeLabel, yn } from "../lookup";
 
 export function JobDetailPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
-  const [offset, setOffset] = useState(0);
   const job = useQuery({
     queryKey: ["admin-lookup-job", id],
     queryFn: () => api.get<LookupJob>(`/lookups/jobs/${id}`),
     refetchInterval: (q) => (lookupInflight(q.state.data?.status) ? 2000 : false),
   });
-  const items = useQuery({
-    queryKey: ["admin-lookup-items", id, offset],
-    queryFn: () => api.get<{ items: LookupItem[]; total: number }>(withPage(`/lookups/jobs/${id}/items`, offset)),
+  const items = useInfiniteQuery({
+    queryKey: ["admin-lookup-items", id],
+    queryFn: ({ pageParam }) =>
+      api.get<{ items: LookupItem[]; total: number }>(withPage(`/lookups/jobs/${id}/items`, pageParam, {}, INFINITE_PAGE_SIZE)),
+    initialPageParam: 0,
+    getNextPageParam: (last, _pages, lastParam) => {
+      const next = lastParam + last.items.length;
+      return next < last.total ? next : undefined;
+    },
     refetchInterval: () => (lookupInflight(job.data?.status) ? 2000 : false),
     enabled: Boolean(id),
   });
@@ -44,7 +64,7 @@ export function JobDetailPage() {
   }
   const j = job.data;
   const hlr = j.type === "hlr";
-  const rows = items.data?.items ?? [];
+  const rows = items.data?.pages.flatMap((p) => p.items) ?? [];
   const clientName = (clients.data?.items ?? []).find((c) => c.id === j.client_id)?.name;
   const inflight = lookupInflight(j.status);
 
@@ -160,8 +180,8 @@ export function JobDetailPage() {
           ))}
         </tbody>
       </Table>
+      <InfiniteSentinel disabled={!items.hasNextPage || items.isFetchingNextPage} onVisible={() => void items.fetchNextPage()} />
       {!items.isLoading && rows.length === 0 ? <EmptyState>Номеров пока нет</EmptyState> : null}
-      <Pager offset={offset} limit={PAGE_SIZE} count={rows.length} onChange={setOffset} />
     </div>
   );
 }

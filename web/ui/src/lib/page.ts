@@ -1,4 +1,5 @@
 export const PAGE_SIZE = 50;
+export const INFINITE_PAGE_SIZE = 100;
 
 export function withPage(path: string, offset: number, extra: Record<string, string> = {}, limit = PAGE_SIZE): string {
   const p = new URLSearchParams();

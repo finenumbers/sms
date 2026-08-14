@@ -55,7 +55,7 @@ HOLD одной проводкой на `unit_sell_price × N` в той же т
 
 Два потока:
 
-- ЛК: preview `ready → consuming → consumed` (ошибка → снова `ready`). TTL 30 мин. Submit — единственное создание job+HOLD. Потолок `max_csv_rows` (100000), не `max_batch_phones` (1000).
+- ЛК: preview `ready → consuming → consumed` (ошибка → снова `ready`). TTL 30 мин. Submit — единственное создание job+HOLD. Потолок `max_csv_rows` (100000), не `max_batch_phones` (1000). Список номеров preview: `GET .../csv-previews/{id}/phones` страницами по 100, не весь JSON.
 - API: `POST /v1/jobs/csv` — async parse, без preview-таблицы.
 
 ## Номера

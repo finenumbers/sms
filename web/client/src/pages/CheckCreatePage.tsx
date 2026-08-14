@@ -1,9 +1,69 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Alert, Button, Card, Field, PageHeader, Textarea, formatMoney } from "ui";
+import {
+  Alert,
+  Button,
+  Card,
+  Field,
+  INFINITE_PAGE_SIZE,
+  InfiniteSentinel,
+  PageHeader,
+  Table,
+  Td,
+  Textarea,
+  Th,
+  formatMoney,
+  withPage,
+} from "ui";
 import { api, type LookupCheckType, type LookupEstimate, type LookupJob, type LookupPreview } from "../api";
 import { lookupError, parsePhoneList, typeLabel } from "../lookup";
+
+type PreviewPhone = { phone: string; line: number };
+
+function PreviewPhonesTable({ previewID }: { previewID: string }) {
+  const q = useInfiniteQuery({
+    queryKey: ["lookup-preview-phones", previewID],
+    queryFn: ({ pageParam }) =>
+      api.get<{ items: PreviewPhone[]; total: number }>(
+        withPage(`/lookups/csv-previews/${previewID}/phones`, pageParam, {}, INFINITE_PAGE_SIZE),
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (last, _pages, lastParam) => {
+      const next = lastParam + last.items.length;
+      return next < last.total ? next : undefined;
+    },
+  });
+  const rows = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const total = q.data?.pages[0]?.total ?? 0;
+  return (
+    <div className="mb-4">
+      <p className="mb-2 text-xs text-zinc-500">
+        {total} номеров в файле
+        {q.isFetchingNextPage ? " · загрузка…" : null}
+      </p>
+      <Table>
+        <thead>
+          <tr>
+            <Th>№</Th>
+            <Th>Номер</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.line}-${row.phone}`}>
+              <Td>{row.line}</Td>
+              <Td>
+                <code>{row.phone}</code>
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+      <InfiniteSentinel disabled={!q.hasNextPage || q.isFetchingNextPage} onVisible={() => void q.fetchNextPage()} />
+    </div>
+  );
+}
 
 export function CheckCreatePage({ type }: { type: LookupCheckType }) {
   const nav = useNavigate();
@@ -58,12 +118,15 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
   function takeFile(next: File | null) {
     setFile(next);
     setPreview(null);
+    if (next) {
+      setList("");
+      upload.mutate(next);
+    }
   }
 
   const est = preview ? csvEstimate : estimate;
   const pending = submitSingle.isPending || submitList.isPending || submitCSV.isPending || upload.isPending;
   const actionError = submitSingle.error ?? submitList.error ?? submitCSV.error ?? upload.error ?? est.error;
-  const needUpload = Boolean(file) && !preview;
 
   return (
     <div>
@@ -113,20 +176,16 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
           >
             <span className="block font-medium text-zinc-800">Перетащите CSV/TXT сюда</span>
             <span className="mt-1 block text-xs text-zinc-500">
-              Один номер на строку или в первом столбце. Перетащите файл сюда или нажмите «Загрузить файл». Проверки —
-              только после «Запустить проверку».
+              Один номер на строку или в первом столбце. Файл разбирается сразу; проверка — после «Запустить проверку».
             </span>
             {file ? <span className="mt-2 block text-xs text-zinc-700">{file.name}</span> : null}
+            {upload.isPending ? <span className="mt-2 block text-xs text-zinc-500">загрузка…</span> : null}
           </button>
-          <Button
-            type="button"
-            variant="secondary"
-            className="mt-2"
-            onClick={() => fileRef.current?.click()}
-          >
+          <Button type="button" variant="secondary" className="mt-2" onClick={() => fileRef.current?.click()}>
             Загрузить файл
           </Button>
         </Field>
+        {preview ? <PreviewPhonesTable previewID={preview.id} /> : null}
         <p className="my-4 text-center text-xs text-zinc-500">или вставьте номера</p>
         <Field label="Номера (E.164, по одному в строке или через запятую)">
           <Textarea
@@ -153,27 +212,21 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
         ) : null}
         {actionError ? <Alert className="mb-3">{lookupError(actionError)}</Alert> : null}
         <div className="flex flex-wrap gap-2">
-          {needUpload ? (
-            <Button type="button" disabled={!file || upload.isPending} onClick={() => file && upload.mutate(file)}>
-              Загрузить и оценить
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              disabled={pending || (!preview && phones.length === 0) || !est.data}
-              onClick={() => {
-                if (preview) {
-                  submitCSV.mutate();
-                } else if (phones.length === 1) {
-                  submitSingle.mutate();
-                } else {
-                  submitList.mutate();
-                }
-              }}
-            >
-              Запустить проверку
-            </Button>
-          )}
+          <Button
+            type="button"
+            disabled={pending || (!preview && phones.length === 0) || !est.data}
+            onClick={() => {
+              if (preview) {
+                submitCSV.mutate();
+              } else if (phones.length === 1) {
+                submitSingle.mutate();
+              } else {
+                submitList.mutate();
+              }
+            }}
+          >
+            Запустить проверку
+          </Button>
         </div>
       </Card>
       <p className="text-xs text-zinc-500">

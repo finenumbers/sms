@@ -231,6 +231,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/lookups/jobs/{jobID}/export", clientH.LookupExportJob)
 			r.Post("/lookups/csv-previews", clientH.LookupCreateCSVPreview)
 			r.Get("/lookups/csv-previews/{previewID}", clientH.LookupGetCSVPreview)
+			r.Get("/lookups/csv-previews/{previewID}/phones", clientH.LookupListCSVPreviewPhones)
 			r.Post("/lookups/csv-previews/{previewID}/estimate", clientH.LookupEstimateCSVPreview)
 			r.Post("/lookups/csv-previews/{previewID}/submit", clientH.LookupSubmitCSVPreview)
 			r.Delete("/lookups/csv-previews/{previewID}", clientH.LookupDeleteCSVPreview)

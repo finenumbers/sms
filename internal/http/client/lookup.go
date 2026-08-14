@@ -284,6 +284,29 @@ func (h *Handlers) LookupGetCSVPreview(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, lookup.PreviewJSON(row))
 }
 
+func (h *Handlers) LookupListCSVPreviewPhones(w http.ResponseWriter, r *http.Request) {
+	p, ok := h.requireLookup(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(w, r, "previewID")
+	if !ok {
+		return
+	}
+	limit, offset := lookup.PageFromRequest(r)
+	items, total, err := h.Lookup.ListCSVPreviewPhones(r.Context(), *p.ClientID, id, limit, offset)
+	if err != nil {
+		lookup.WriteError(w, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{
+		"items":  items,
+		"total":  total,
+		"offset": offset,
+		"limit":  limit,
+	})
+}
+
 func (h *Handlers) LookupEstimateCSVPreview(w http.ResponseWriter, r *http.Request) {
 	p, ok := h.requireLookup(w, r)
 	if !ok {

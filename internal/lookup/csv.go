@@ -444,6 +444,41 @@ func (s *Service) invalidatePreview(ctx context.Context, id uuid.UUID, msg strin
 	})
 }
 
+func (s *Service) ListCSVPreviewPhones(ctx context.Context, clientID, id uuid.UUID, limit, offset int32) ([]map[string]any, int, error) {
+	_, phones, err := s.GetCSVPreview(ctx, clientID, id)
+	if err != nil {
+		return nil, 0, err
+	}
+	items, total := pagePreviewPhones(phones, limit, offset)
+	return items, total, nil
+}
+
+func pagePreviewPhones(phones []string, limit, offset int32) ([]map[string]any, int) {
+	if limit < 1 || limit > 100 {
+		limit = 50
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	total := len(phones)
+	start := int(offset)
+	if start > total {
+		start = total
+	}
+	end := start + int(limit)
+	if end > total {
+		end = total
+	}
+	out := make([]map[string]any, 0, end-start)
+	for i, phone := range phones[start:end] {
+		out = append(out, map[string]any{
+			"phone": phone,
+			"line":  start + i + 1,
+		})
+	}
+	return out, total
+}
+
 func phonesFromPreview(row sqlcdb.LookupCsvPreview) ([]string, error) {
 	var payload struct {
 		Phones []string `json:"phones"`

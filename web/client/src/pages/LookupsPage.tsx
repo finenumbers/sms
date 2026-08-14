@@ -1,23 +1,42 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Badge, EmptyState, ErrorBox, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Th, statusTone, withPage, formatMoney } from "ui";
+import {
+  Badge,
+  EmptyState,
+  ErrorBox,
+  INFINITE_PAGE_SIZE,
+  InfiniteSentinel,
+  PageHeader,
+  Select,
+  Table,
+  Td,
+  Th,
+  statusTone,
+  withPage,
+  formatMoney,
+} from "ui";
 import { api, type LookupJob } from "../api";
 import { jobStatusLabel, lookupInflight, typeLabel } from "../lookup";
 
 export function LookupsPage() {
-  const [offset, setOffset] = useState(0);
   const [checkType, setCheckType] = useState("");
   const [status, setStatus] = useState("");
-  const list = useQuery({
-    queryKey: ["lookup-jobs", offset, checkType, status],
-    queryFn: () =>
+  const list = useInfiniteQuery({
+    queryKey: ["lookup-jobs", checkType, status],
+    queryFn: ({ pageParam }) =>
       api.get<{ items: LookupJob[]; total: number }>(
-        withPage("/lookups/jobs", offset, { check_type: checkType, status }),
+        withPage("/lookups/jobs", pageParam, { check_type: checkType, status }, INFINITE_PAGE_SIZE),
       ),
-    refetchInterval: (q) => ((q.state.data?.items ?? []).some((j) => lookupInflight(j.status)) ? 4000 : false),
+    initialPageParam: 0,
+    getNextPageParam: (last, _pages, lastParam) => {
+      const next = lastParam + last.items.length;
+      return next < last.total ? next : undefined;
+    },
+    refetchInterval: (q) =>
+      (q.state.data?.pages ?? []).some((p) => p.items.some((j) => lookupInflight(j.status))) ? 4000 : false,
   });
-  const items = list.data?.items ?? [];
+  const items = list.data?.pages.flatMap((p) => p.items) ?? [];
 
   return (
     <div>
@@ -35,24 +54,12 @@ export function LookupsPage() {
         }
       />
       <div className="mb-3 grid gap-3 md:grid-cols-2">
-        <Select
-          value={checkType}
-          onChange={(e) => {
-            setCheckType(e.target.value);
-            setOffset(0);
-          }}
-        >
+        <Select value={checkType} onChange={(e) => setCheckType(e.target.value)}>
           <option value="">все типы</option>
           <option value="hlr">HLR</option>
           <option value="ping">Silent SMS</option>
         </Select>
-        <Select
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setOffset(0);
-          }}
-        >
+        <Select value={status} onChange={(e) => setStatus(e.target.value)}>
           <option value="">все статусы</option>
           <option value="queued">в очереди</option>
           <option value="processing">выполняется</option>
@@ -92,8 +99,8 @@ export function LookupsPage() {
           ))}
         </tbody>
       </Table>
+      <InfiniteSentinel disabled={!list.hasNextPage || list.isFetchingNextPage} onVisible={() => void list.fetchNextPage()} />
       {!list.isLoading && items.length === 0 ? <EmptyState>Проверок нет</EmptyState> : null}
-      <Pager offset={offset} limit={PAGE_SIZE} count={items.length} onChange={setOffset} />
     </div>
   );
 }

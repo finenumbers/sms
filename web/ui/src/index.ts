@@ -2,7 +2,7 @@ export { cn } from "./lib/cn";
 export { ApiError, createApi, formatApiError, request, type Api } from "./lib/api";
 export { formatMoney } from "./lib/money";
 export { pollStatus } from "./lib/poll";
-export { PAGE_SIZE, withPage } from "./lib/page";
+export { PAGE_SIZE, INFINITE_PAGE_SIZE, withPage } from "./lib/page";
 export {
   Alert,
   Badge,
@@ -24,4 +24,5 @@ export {
   statusTone,
   type InvalidRow,
 } from "./components/ui";
+export { InfiniteSentinel } from "./components/InfiniteSentinel";
 export { LoginLayout, Shell, type NavItem } from "./components/shell";

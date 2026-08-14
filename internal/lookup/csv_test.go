@@ -79,3 +79,19 @@ func TestExportHeadersAndRow(t *testing.T) {
 		t.Fatalf("xlsx %v %d", err, len(raw))
 	}
 }
+
+func TestPagePreviewPhones(t *testing.T) {
+	phones := []string{"a", "b", "c"}
+	items, total := pagePreviewPhones(phones, 2, 0)
+	if total != 3 || len(items) != 2 || items[0]["line"] != 1 || items[1]["phone"] != "b" {
+		t.Fatalf("%v total=%d", items, total)
+	}
+	items, total = pagePreviewPhones(phones, 2, 2)
+	if total != 3 || len(items) != 1 || items[0]["line"] != 3 || items[0]["phone"] != "c" {
+		t.Fatalf("tail %#v", items)
+	}
+	items, _ = pagePreviewPhones(phones, 10, 10)
+	if len(items) != 0 {
+		t.Fatalf("past end %#v", items)
+	}
+}

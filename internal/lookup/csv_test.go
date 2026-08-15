@@ -57,8 +57,12 @@ func TestWriteErrorLookupDisabled(t *testing.T) {
 }
 
 func TestExportHeadersAndRow(t *testing.T) {
-	if len(ExportHeaders(sqlcdb.LookupCheckTypeHlr)) != 15 {
+	if len(ExportHeaders(sqlcdb.LookupCheckTypeHlr)) != 16 {
 		t.Fatalf("hlr headers %d", len(ExportHeaders(sqlcdb.LookupCheckTypeHlr)))
+	}
+	headers := ExportHeaders(sqlcdb.LookupCheckTypeHlr)
+	if headers[7] != "MCC" || headers[8] != "MNC" {
+		t.Fatalf("mcc/mnc headers %#v", headers[7:9])
 	}
 	if len(ExportHeaders(sqlcdb.LookupCheckTypePing)) != 5 {
 		t.Fatalf("ping headers %d", len(ExportHeaders(sqlcdb.LookupCheckTypePing)))
@@ -73,6 +77,14 @@ func TestExportHeadersAndRow(t *testing.T) {
 	row := ExportRow(sqlcdb.LookupCheckTypePing, item)
 	if row[0] != "+79001234567" || row[2] != "в сети" || row[3] != "да" {
 		t.Fatalf("row %#v", row)
+	}
+	mcc, mnc := "250", "01"
+	hlrItem := item
+	hlrItem.Mcc = &mcc
+	hlrItem.Mnc = &mnc
+	hlrRow := ExportRow(sqlcdb.LookupCheckTypeHlr, hlrItem)
+	if len(hlrRow) != 16 || hlrRow[7] != "250" || hlrRow[8] != "01" {
+		t.Fatalf("hlr row %#v", hlrRow)
 	}
 	raw, err := BuildXLSX(sqlcdb.LookupCheckTypePing, []sqlcdb.LookupItem{item})
 	if err != nil || len(raw) < 100 {

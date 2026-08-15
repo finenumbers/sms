@@ -2408,14 +2408,74 @@ components:
           type: string
         result_status:
           type: string
+          enum: [reachable, unreachable, pending, error, unknown]
         is_reachable:
           type: boolean
+          nullable: true
+        imsi:
+          type: string
+          nullable: true
+        mcc:
+          type: string
+          nullable: true
+        mnc:
+          type: string
+          nullable: true
+        operator_name:
+          type: string
+          nullable: true
+          description: Home network name from SMSC `net`/`operator`
+        country_code:
+          type: string
+          nullable: true
+          description: Home country name from SMSC `cn`/`country`
+        region:
+          type: string
+          nullable: true
+        msc:
+          type: string
+          nullable: true
+        ported:
+          type: boolean
+          nullable: true
+          description: Present in the contract; SMSC HLR does not populate it
+        roaming:
+          type: boolean
+          nullable: true
+        roaming_country:
+          type: string
+          nullable: true
+          description: From SMSC `rcn`
+        roaming_operator:
+          type: string
+          nullable: true
+          description: From SMSC `rnet`
+        error_code:
+          type: string
+          nullable: true
+        error_message:
+          type: string
+          nullable: true
         unit_sell_price:
           type: string
           description: Cabinet/public sell price only; no provider cost
         actual_cost:
           type: string
           description: Captured sell share written by settle, not SMSC provider cost. Empty after RELEASE.
+        currency:
+          type: string
+          nullable: true
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
     CreateWebhookRequest:
       type: object
       required: [url]

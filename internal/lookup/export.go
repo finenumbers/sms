@@ -17,7 +17,7 @@ const (
 
 var exportHeadersHLR = []string{
 	"Телефон", "Статус", "Результат", "Доступен", "Оператор", "Страна", "Регион",
-	"MCC/MNC", "IMSI", "MSC", "Роуминг", "Страна роуминга", "Оператор роуминга",
+	"MCC", "MNC", "IMSI", "MSC", "Роуминг", "Страна роуминга", "Оператор роуминга",
 	"Ошибки", "Подробности",
 }
 
@@ -100,7 +100,8 @@ func ExportRow(checkType sqlcdb.LookupCheckType, item sqlcdb.LookupItem) []strin
 			exportText(deref(item.OperatorName)),
 			exportText(deref(item.CountryCode)),
 			exportText(extraString(extras, "region")),
-			exportMccMnc(item),
+			exportText(deref(item.Mcc)),
+			exportText(deref(item.Mnc)),
 			exportText(deref(item.Imsi)),
 			exportText(extraString(extras, "msc")),
 			exportBool(item.Roaming),
@@ -224,13 +225,6 @@ func exportBool(v *bool) string {
 		return "да"
 	}
 	return "нет"
-}
-
-func exportMccMnc(item sqlcdb.LookupItem) string {
-	if item.Mcc == nil && item.Mnc == nil {
-		return exportDash
-	}
-	return exportText(deref(item.Mcc)) + "/" + exportText(deref(item.Mnc))
 }
 
 func exportProviderError(item sqlcdb.LookupItem) string {

@@ -151,31 +151,43 @@ export function JobDetailPage() {
       <Table>
         <thead>
           <tr>
-            <Th>Номер</Th>
-            <Th>Статус</Th>
-            <Th>Результат</Th>
-            {hlr ? <Th>Оператор</Th> : null}
-            {hlr ? <Th>IMSI</Th> : null}
-            {hlr ? <Th>MSC</Th> : null}
-            {hlr ? <Th>Роуминг</Th> : null}
-            <Th>Ошибка</Th>
+            <Th fit>Номер</Th>
+            <Th fit>Статус</Th>
+            <Th fit>Результат</Th>
+            {hlr ? <Th fit>Оператор</Th> : null}
+            {hlr ? <Th fit>Страна</Th> : null}
+            {hlr ? <Th fit>Регион</Th> : null}
+            {hlr ? <Th fit>MCC</Th> : null}
+            {hlr ? <Th fit>MNC</Th> : null}
+            {hlr ? <Th fit>IMSI</Th> : null}
+            {hlr ? <Th fit>MSC</Th> : null}
+            {hlr ? <Th fit>Роуминг</Th> : null}
+            {hlr ? <Th fit>Страна роуминга</Th> : null}
+            {hlr ? <Th fit>Оператор роуминга</Th> : null}
+            <Th fit>Ошибка</Th>
           </tr>
         </thead>
         <tbody>
           {rows.map((it) => (
             <tr key={it.id}>
-              <Td>
+              <Td fit>
                 <code>{it.phone}</code>
               </Td>
-              <Td>
+              <Td fit>
                 <Badge tone={statusTone(it.status)}>{itemStatusLabel[it.status] ?? it.status}</Badge>
               </Td>
-              <Td>{it.result_status ? resultLabel[it.result_status] ?? it.result_status : yn(it.is_reachable)}</Td>
-              {hlr ? <Td>{it.operator_name ?? "—"}</Td> : null}
-              {hlr ? <Td>{it.imsi ?? "—"}</Td> : null}
-              {hlr ? <Td>{it.msc ?? "—"}</Td> : null}
-              {hlr ? <Td>{yn(it.roaming)}</Td> : null}
-              <Td>{it.error_message ?? "—"}</Td>
+              <Td fit>{it.result_status ? resultLabel[it.result_status] ?? it.result_status : yn(it.is_reachable)}</Td>
+              {hlr ? <Td fit>{it.operator_name || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.country_code || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.region || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.mcc || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.mnc || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.imsi || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.msc || "—"}</Td> : null}
+              {hlr ? <Td fit>{yn(it.roaming)}</Td> : null}
+              {hlr ? <Td fit>{it.roaming_country || "—"}</Td> : null}
+              {hlr ? <Td fit>{it.roaming_operator || "—"}</Td> : null}
+              <Td fit>{it.error_message || "—"}</Td>
             </tr>
           ))}
         </tbody>

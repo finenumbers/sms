@@ -58,3 +58,7 @@ export function parsePhoneList(raw: string): string[] {
 export function lookupInflight(status?: string): boolean {
   return status === "queued" || status === "processing";
 }
+
+export function hlrNegativeRow(item: { status?: string; result_status?: string }): boolean {
+  return item.result_status === "unreachable" || item.result_status === "error" || item.status === "failed";
+}

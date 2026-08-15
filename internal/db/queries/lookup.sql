@@ -183,6 +183,12 @@ SET success_count = (
     failure_count = (
         SELECT count(*)::int FROM lookup_items WHERE job_id = j.id AND status = 'failed'
     ),
+    reachable_count = (
+        SELECT count(*)::int FROM lookup_items WHERE job_id = j.id AND result_status = 'reachable'
+    ),
+    unreachable_count = (
+        SELECT count(*)::int FROM lookup_items WHERE job_id = j.id AND result_status = 'unreachable'
+    ),
     actual_cost = (
         SELECT COALESCE(sum(i.actual_cost), 0)::billing_money
         FROM lookup_items i

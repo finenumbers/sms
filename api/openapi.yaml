@@ -2377,6 +2377,10 @@ components:
           type: integer
         failure_count:
           type: integer
+        reachable_count:
+          type: integer
+        unreachable_count:
+          type: integer
         unit_sell_price:
           type: string
         estimated_cost:

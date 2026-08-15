@@ -18,7 +18,7 @@ import {
   formatMoney,
 } from "ui";
 import { api, type ClientRow, type LookupJob } from "../api";
-import { jobStatusLabel, lookupInflight, typeLabel } from "../lookup";
+import { jobStatusLabel, lookupInflight, sourceLabel, typeLabel } from "../lookup";
 
 export function JobsPage() {
   const [search] = useSearchParams();
@@ -77,35 +77,49 @@ export function JobsPage() {
       <Table>
         <thead>
           <tr>
-            <Th>Создано</Th>
-            <Th>Клиент</Th>
-            <Th>Тип</Th>
-            <Th>Статус</Th>
-            <Th>Номеров</Th>
-            <Th>Оценка</Th>
+            <Th fit>Создано</Th>
+            <Th fit>Клиент</Th>
+            <Th fit>Тип</Th>
+            <Th fit>Источник</Th>
+            <Th fit>Статус</Th>
+            <Th fit>Всего</Th>
+            <Th fit>В сети</Th>
+            <Th fit>Не в сети</Th>
+            <Th fit>Ошибки</Th>
+            <Th fit>Списано</Th>
+            <Th fit>Файл</Th>
+            <Th fit>Ошибка</Th>
           </tr>
         </thead>
         <tbody>
           {items.map((job) => (
             <tr key={job.id}>
-              <Td>
+              <Td fit>
                 <Link className="text-blue-700 hover:underline" to={`/jobs/${job.id}`}>
                   {formatDateTime(job.created_at)}
                 </Link>
               </Td>
-              <Td>
+              <Td fit>
                 <Link className="text-blue-700 hover:underline" to={`/clients/${job.client_id}`}>
                   {names[job.client_id] ?? job.client_id}
                 </Link>
               </Td>
-              <Td>{typeLabel[job.type] ?? job.type}</Td>
-              <Td>
+              <Td fit>{typeLabel[job.type] ?? job.type}</Td>
+              <Td fit>{sourceLabel[job.source] ?? job.source}</Td>
+              <Td fit>
                 <Badge tone={statusTone(job.status)}>{jobStatusLabel[job.status] ?? job.status}</Badge>
               </Td>
-              <Td>
-                {job.success_count + job.failure_count}/{job.item_count}
+              <Td fit>{job.item_count}</Td>
+              <Td fit>{job.reachable_count ?? 0}</Td>
+              <Td fit className={(job.unreachable_count ?? 0) > 0 ? "text-red-800" : undefined}>
+                {job.unreachable_count ?? 0}
               </Td>
-              <Td>{formatMoney(job.estimated_cost, job.currency)}</Td>
+              <Td fit className={job.failure_count > 0 ? "text-red-800" : undefined}>
+                {job.failure_count}
+              </Td>
+              <Td fit>{formatMoney(job.actual_cost || job.estimated_cost, job.currency)}</Td>
+              <Td fit>{job.original_filename || "—"}</Td>
+              <Td fit>{job.error_message || "—"}</Td>
             </tr>
           ))}
         </tbody>

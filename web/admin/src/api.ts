@@ -186,6 +186,8 @@ export type LookupJob = {
   item_count: number;
   success_count: number;
   failure_count: number;
+  reachable_count?: number;
+  unreachable_count?: number;
   unit_sell_price?: string;
   tariff_plan_code?: string;
   currency?: string;

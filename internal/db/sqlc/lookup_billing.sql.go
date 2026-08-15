@@ -98,7 +98,7 @@ func (q *Queries) GetLookupItem(ctx context.Context, id uuid.UUID) (LookupItem, 
 }
 
 const getLookupJob = `-- name: GetLookupJob :one
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at FROM lookup_jobs WHERE id = $1
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count FROM lookup_jobs WHERE id = $1
 `
 
 func (q *Queries) GetLookupJob(ctx context.Context, id uuid.UUID) (LookupJob, error) {
@@ -130,6 +130,8 @@ func (q *Queries) GetLookupJob(ctx context.Context, id uuid.UUID) (LookupJob, er
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }

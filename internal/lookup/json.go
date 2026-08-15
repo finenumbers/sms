@@ -39,6 +39,8 @@ func JobJSON(job sqlcdb.LookupJob) map[string]any {
 		"item_count":        job.ItemCount,
 		"success_count":     job.SuccessCount,
 		"failure_count":     job.FailureCount,
+		"reachable_count":   job.ReachableCount,
+		"unreachable_count": job.UnreachableCount,
 		"unit_sell_price":   billing.FormatMoneyPtr(job.UnitSellPrice),
 		"tariff_plan_code":  job.TariffPlanCode,
 		"currency":          job.Currency,
@@ -106,7 +108,7 @@ func ItemJSON(item sqlcdb.LookupItem) map[string]any {
 		"roaming_country":  rcOut,
 		"roaming_operator": roOut,
 		"error_code":       item.ErrorCode,
-		"error_message":    item.ErrorMessage,
+		"error_message":    itemErrorMessage(item),
 		"unit_sell_price":  billing.FormatMoneyPtr(item.UnitSellPrice),
 		// actual_cost is the captured sell share, not SMSC provider cost. Null after RELEASE.
 		"actual_cost":      billing.FormatMoneyPtr(item.ActualCost),
@@ -115,6 +117,17 @@ func ItemJSON(item sqlcdb.LookupItem) map[string]any {
 		"completed_at":     formatTimePtr(item.CompletedAt),
 		"created_at":       item.CreatedAt.UTC().Format(time.RFC3339Nano),
 	}
+}
+
+func itemErrorMessage(item sqlcdb.LookupItem) any {
+	if deref(item.ErrorMessage) != "" {
+		return item.ErrorMessage
+	}
+	label := exportProviderError(item)
+	if label == exportDash {
+		return nil
+	}
+	return label
 }
 
 func CheckJSON(item sqlcdb.LookupItem) map[string]any {

@@ -1330,6 +1330,8 @@ type LookupJob struct {
 	Metadata         []byte           `json:"metadata"`
 	CreatedAt        time.Time        `json:"created_at"`
 	UpdatedAt        time.Time        `json:"updated_at"`
+	ReachableCount   int32            `json:"reachable_count"`
+	UnreachableCount int32            `json:"unreachable_count"`
 }
 
 type NumberAssignment struct {

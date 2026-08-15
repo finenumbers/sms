@@ -700,7 +700,7 @@ SET status = $1,
     updated_at = now()
 WHERE id = $4
   AND status IN ('queued', 'processing')
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 `
 
 type FinalizeLookupJobParams struct {
@@ -744,6 +744,8 @@ func (q *Queries) FinalizeLookupJob(ctx context.Context, arg FinalizeLookupJobPa
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
@@ -931,7 +933,7 @@ func (q *Queries) GetLookupItemForClient(ctx context.Context, arg GetLookupItemF
 }
 
 const getLookupJobByCSVPreview = `-- name: GetLookupJobByCSVPreview :one
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
 WHERE client_id = $1
   AND metadata->>'csv_preview_id' = $2::text
@@ -973,12 +975,14 @@ func (q *Queries) GetLookupJobByCSVPreview(ctx context.Context, arg GetLookupJob
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
 
 const getLookupJobByIdempotency = `-- name: GetLookupJobByIdempotency :one
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
 WHERE client_id = $1
   AND idempotency_key = $2
@@ -1018,12 +1022,14 @@ func (q *Queries) GetLookupJobByIdempotency(ctx context.Context, arg GetLookupJo
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
 
 const getLookupJobForClient = `-- name: GetLookupJobForClient :one
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
 WHERE id = $1
   AND client_id = $2
@@ -1063,6 +1069,8 @@ func (q *Queries) GetLookupJobForClient(ctx context.Context, arg GetLookupJobFor
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
@@ -1269,7 +1277,7 @@ INSERT INTO lookup_jobs (
     $14,
     $15
 )
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 `
 
 type InsertLookupJobParams struct {
@@ -1335,6 +1343,8 @@ func (q *Queries) InsertLookupJob(ctx context.Context, arg InsertLookupJobParams
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
@@ -1483,7 +1493,7 @@ func (q *Queries) InsertProviderLookupRequest(ctx context.Context, arg InsertPro
 }
 
 const listEmptyCsvLookupShells = `-- name: ListEmptyCsvLookupShells :many
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
 WHERE item_count = 0
   AND status = 'queued'
@@ -1533,6 +1543,8 @@ func (q *Queries) ListEmptyCsvLookupShells(ctx context.Context, arg ListEmptyCsv
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReachableCount,
+			&i.UnreachableCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1545,7 +1557,7 @@ func (q *Queries) ListEmptyCsvLookupShells(ctx context.Context, arg ListEmptyCsv
 }
 
 const listJobsNeedingFinalize = `-- name: ListJobsNeedingFinalize :many
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
 WHERE status = 'processing'
   AND item_count > 0
@@ -1589,6 +1601,8 @@ func (q *Queries) ListJobsNeedingFinalize(ctx context.Context, pageLimit int32) 
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReachableCount,
+			&i.UnreachableCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1601,7 +1615,7 @@ func (q *Queries) ListJobsNeedingFinalize(ctx context.Context, pageLimit int32) 
 }
 
 const listJobsNeedingSubmitResume = `-- name: ListJobsNeedingSubmitResume :many
-SELECT j.id, j.client_id, j.check_type, j.source, j.status, j.item_count, j.success_count, j.failure_count, j.unit_sell_price, j.tariff_plan_id, j.tariff_plan_code, j.currency, j.estimated_cost, j.actual_cost, j.original_filename, j.idempotency_key, j.created_by, j.api_credential_id, j.error_code, j.error_message, j.started_at, j.completed_at, j.metadata, j.created_at, j.updated_at
+SELECT j.id, j.client_id, j.check_type, j.source, j.status, j.item_count, j.success_count, j.failure_count, j.unit_sell_price, j.tariff_plan_id, j.tariff_plan_code, j.currency, j.estimated_cost, j.actual_cost, j.original_filename, j.idempotency_key, j.created_by, j.api_credential_id, j.error_code, j.error_message, j.started_at, j.completed_at, j.metadata, j.created_at, j.updated_at, j.reachable_count, j.unreachable_count
 FROM lookup_jobs j
 WHERE j.status IN ('queued', 'processing')
   AND j.item_count > 0
@@ -1654,6 +1668,8 @@ func (q *Queries) ListJobsNeedingSubmitResume(ctx context.Context, arg ListJobsN
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReachableCount,
+			&i.UnreachableCount,
 		); err != nil {
 			return nil, err
 		}
@@ -1948,7 +1964,7 @@ func (q *Queries) ListLookupItemsForClient(ctx context.Context, arg ListLookupIt
 }
 
 const listLookupJobs = `-- name: ListLookupJobs :many
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
 WHERE ($1::uuid IS NULL OR client_id = $1)
   AND ($2::lookup_job_status IS NULL OR status = $2)
@@ -2006,6 +2022,8 @@ func (q *Queries) ListLookupJobs(ctx context.Context, arg ListLookupJobsParams) 
 			&i.Metadata,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.ReachableCount,
+			&i.UnreachableCount,
 		); err != nil {
 			return nil, err
 		}
@@ -2595,7 +2613,7 @@ SET status = 'processing',
     updated_at = now()
 WHERE id = $1
   AND status IN ('queued', 'processing')
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 `
 
 func (q *Queries) MarkLookupJobProcessing(ctx context.Context, id uuid.UUID) (LookupJob, error) {
@@ -2627,6 +2645,8 @@ func (q *Queries) MarkLookupJobProcessing(ctx context.Context, id uuid.UUID) (Lo
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
@@ -2670,7 +2690,7 @@ SET item_count = $1,
 WHERE id = $8
   AND status = 'queued'
   AND item_count = 0
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 `
 
 type PatchLookupJobAfterParseParams struct {
@@ -2722,6 +2742,8 @@ func (q *Queries) PatchLookupJobAfterParse(ctx context.Context, arg PatchLookupJ
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
@@ -2731,7 +2753,7 @@ UPDATE lookup_jobs
 SET metadata = $1,
     updated_at = now()
 WHERE id = $2
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 `
 
 type PatchLookupJobMetadataParams struct {
@@ -2768,6 +2790,8 @@ func (q *Queries) PatchLookupJobMetadata(ctx context.Context, arg PatchLookupJob
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }
@@ -2780,6 +2804,12 @@ SET success_count = (
     failure_count = (
         SELECT count(*)::int FROM lookup_items WHERE job_id = j.id AND status = 'failed'
     ),
+    reachable_count = (
+        SELECT count(*)::int FROM lookup_items WHERE job_id = j.id AND result_status = 'reachable'
+    ),
+    unreachable_count = (
+        SELECT count(*)::int FROM lookup_items WHERE job_id = j.id AND result_status = 'unreachable'
+    ),
     actual_cost = (
         SELECT COALESCE(sum(i.actual_cost), 0)::billing_money
         FROM lookup_items i
@@ -2788,7 +2818,7 @@ SET success_count = (
     ),
     updated_at = now()
 WHERE j.id = $1
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at
+RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 `
 
 func (q *Queries) RefreshLookupJobCounters(ctx context.Context, id uuid.UUID) (LookupJob, error) {
@@ -2820,6 +2850,8 @@ func (q *Queries) RefreshLookupJobCounters(ctx context.Context, id uuid.UUID) (L
 		&i.Metadata,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.ReachableCount,
+		&i.UnreachableCount,
 	)
 	return i, err
 }

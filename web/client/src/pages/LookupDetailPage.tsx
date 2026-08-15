@@ -17,7 +17,7 @@ import {
   formatMoney,
 } from "ui";
 import { api, downloadClientFile, type LookupItem, type LookupJob } from "../api";
-import { itemStatusLabel, jobStatusLabel, lookupError, lookupInflight, resultLabel, sourceLabel, typeLabel } from "../lookup";
+import { itemStatusLabel, jobStatusLabel, lookupError, lookupInflight, hlrNegativeRow, resultLabel, sourceLabel, typeLabel } from "../lookup";
 
 function yn(v?: boolean) {
   if (v == null) {
@@ -124,7 +124,7 @@ export function LookupDetailPage() {
         </thead>
         <tbody>
           {rows.map((it) => (
-            <tr key={it.id}>
+            <tr key={it.id} className={hlr && hlrNegativeRow(it) ? "bg-red-50 text-red-800" : undefined}>
               <Td fit>
                 <code>{it.phone}</code>
               </Td>

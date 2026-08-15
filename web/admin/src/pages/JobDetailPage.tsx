@@ -18,7 +18,7 @@ import {
   formatMoney,
 } from "ui";
 import { api, downloadAdminFile, type ClientRow, type LookupItem, type LookupJob } from "../api";
-import { itemStatusLabel, jobStatusLabel, lookupInflight, resultLabel, sourceLabel, typeLabel, yn } from "../lookup";
+import { itemStatusLabel, jobStatusLabel, lookupInflight, hlrNegativeRow, resultLabel, sourceLabel, typeLabel, yn } from "../lookup";
 
 export function JobDetailPage() {
   const { id = "" } = useParams();
@@ -169,7 +169,7 @@ export function JobDetailPage() {
         </thead>
         <tbody>
           {rows.map((it) => (
-            <tr key={it.id}>
+            <tr key={it.id} className={hlr && hlrNegativeRow(it) ? "bg-red-50 text-red-800" : undefined}>
               <Td fit>
                 <code>{it.phone}</code>
               </Td>

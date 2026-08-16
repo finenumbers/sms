@@ -367,9 +367,26 @@ func (h *Handlers) AssignClientTariff(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "validation", "invalid product")
 		return
 	}
+	if !clientAssignable(w, r, h, id) {
+		return
+	}
 	planID, err := uuid.Parse(req.TariffPlanID)
 	if err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, "validation", "invalid tariff_plan_id")
+		return
+	}
+	plan, err := h.Store.Queries.GetTariffPlanByID(r.Context(), planID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "tariff plan not found")
+			return
+		}
+		h.Log.Error("assign tariff plan", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal", "internal error")
+		return
+	}
+	if err := billing.AssertPlanAssignable(plan, product); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "validation", err.Error())
 		return
 	}
 	arg := sqlcdb.UpsertClientTariffParams{ClientID: id, Product: product, TariffPlanID: planID}
@@ -424,6 +441,9 @@ func (h *Handlers) UnassignClientTariff(w http.ResponseWriter, r *http.Request) 
 		httpx.WriteError(w, http.StatusBadRequest, "validation", "invalid product")
 		return
 	}
+	if !clientAssignable(w, r, h, id) {
+		return
+	}
 	n, err := h.Store.Queries.DeleteClientTariff(r.Context(), sqlcdb.DeleteClientTariffParams{
 		ClientID: id,
 		Product:  product,
@@ -448,6 +468,24 @@ func (h *Handlers) UnassignClientTariff(w http.ResponseWriter, r *http.Request) 
 		Metadata:     map[string]any{"product": string(product)},
 	})
 	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "product": product})
+}
+
+func clientAssignable(w http.ResponseWriter, r *http.Request, h *Handlers, id uuid.UUID) bool {
+	cl, err := h.Store.Queries.GetClientByID(r.Context(), id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			httpx.WriteError(w, http.StatusNotFound, "not_found", "client not found")
+			return false
+		}
+		h.Log.Error("load client for tariff", "err", err)
+		httpx.WriteError(w, http.StatusInternalServerError, "internal", "internal error")
+		return false
+	}
+	if cl.Status == sqlcdb.ClientStatusDeleted {
+		httpx.WriteError(w, http.StatusNotFound, "not_found", "client not found")
+		return false
+	}
+	return true
 }
 
 func ledgerRowJSON(id, clientID uuid.UUID, clientName string, txType sqlcdb.WalletTxType, amount decimal.Decimal, currency string, avail, held *decimal.Decimal, smsID *uuid.UUID, desc *string, at time.Time) map[string]any {
@@ -483,15 +521,15 @@ func clientTariffJSON(t sqlcdb.ListClientTariffsRow) map[string]any {
 		sell = *t.PriceOverride
 	}
 	return map[string]any{
-		"id":             t.ID,
-		"product":        t.Product,
-		"tariff_plan_id": t.TariffPlanID,
-		"plan_code":      t.PlanCode,
-		"plan_name":      t.PlanName,
-		"sell_price":     billing.FormatMoney(sell),
+		"id":              t.ID,
+		"product":         t.Product,
+		"tariff_plan_id":  t.TariffPlanID,
+		"plan_code":       t.PlanCode,
+		"plan_name":       t.PlanName,
+		"sell_price":      billing.FormatMoney(sell),
 		"plan_sell_price": billing.FormatMoney(t.PlanSellPrice),
-		"price_override": billing.FormatMoneyPtr(t.PriceOverride),
-		"currency":       t.Currency,
-		"is_active":      t.PlanIsActive,
+		"price_override":  billing.FormatMoneyPtr(t.PriceOverride),
+		"currency":        t.Currency,
+		"is_active":       t.PlanIsActive,
 	}
 }

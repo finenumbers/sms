@@ -289,6 +289,7 @@ func (s *Service) CreateClient(ctx context.Context, in CreateClientInput) (Creat
 		ClientID:     cl.ID,
 		Email:        email,
 		PasswordHash: hash,
+		Name:         "",
 	})
 	if err != nil {
 		return CreatedClient{}, err
@@ -436,19 +437,6 @@ func (s *Service) setStatus(ctx context.Context, id uuid.UUID, from, to sqlcdb.C
 }
 
 func (s *Service) ResetOwnerPassword(ctx context.Context, clientID uuid.UUID, newPassword string) error {
-	if len(newPassword) < 10 {
-		return fmt.Errorf("%w: password must be at least 10 characters", ErrValidation)
-	}
-	cl, err := s.store.Queries.GetClientByID(ctx, clientID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrNotFound
-		}
-		return err
-	}
-	if cl.Status == sqlcdb.ClientStatusDeleted {
-		return ErrNotFound
-	}
 	owner, err := s.store.Queries.GetOwnerByClientID(ctx, clientID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -456,26 +444,7 @@ func (s *Service) ResetOwnerPassword(ctx context.Context, clientID uuid.UUID, ne
 		}
 		return err
 	}
-	hash, err := password.Hash(newPassword)
-	if err != nil {
-		return err
-	}
-	tx, err := s.store.Pool.Begin(ctx)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback(ctx)
-	q := s.store.Queries.WithTx(tx)
-	if err := q.UpdateClientUserPassword(ctx, sqlcdb.UpdateClientUserPasswordParams{
-		PasswordHash: hash,
-		ID:           owner.ID,
-	}); err != nil {
-		return err
-	}
-	if err := q.RevokeSessionsForClient(ctx, clientID); err != nil {
-		return err
-	}
-	return tx.Commit(ctx)
+	return s.ResetClientUserPassword(ctx, clientID, owner.ID, newPassword)
 }
 
 func normalizeEmail(email string) string {
@@ -483,10 +452,15 @@ func normalizeEmail(email string) string {
 }
 
 func validateEmail(email string) error {
-	if email == "" {
+	trimmed := strings.TrimSpace(email)
+	if trimmed == "" {
 		return fmt.Errorf("%w: email required", ErrValidation)
 	}
-	if _, err := mail.ParseAddress(email); err != nil {
+	addr, err := mail.ParseAddress(trimmed)
+	if err != nil || addr.Address == "" {
+		return fmt.Errorf("%w: invalid email", ErrValidation)
+	}
+	if !strings.EqualFold(addr.Address, trimmed) {
 		return fmt.Errorf("%w: invalid email", ErrValidation)
 	}
 	return nil

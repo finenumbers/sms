@@ -32,6 +32,20 @@ func TestKnownProduct(t *testing.T) {
 	}
 }
 
+func TestAssertPlanAssignable(t *testing.T) {
+	plan := sqlcdb.TariffPlan{Product: sqlcdb.BillingProductHlr, IsActive: true}
+	if err := AssertPlanAssignable(plan, sqlcdb.BillingProductHlr); err != nil {
+		t.Fatal(err)
+	}
+	if err := AssertPlanAssignable(plan, sqlcdb.BillingProductSilentSms); err == nil {
+		t.Fatal("expected product mismatch")
+	}
+	plan.IsActive = false
+	if err := AssertPlanAssignable(plan, sqlcdb.BillingProductHlr); err == nil {
+		t.Fatal("expected inactive plan")
+	}
+}
+
 func TestRemainingOnHold(t *testing.T) {
 	hold := decimal.RequireFromString("10")
 	left, err := RemainingOnHold(hold, decimal.RequireFromString("4"))

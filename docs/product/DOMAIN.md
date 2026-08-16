@@ -45,8 +45,8 @@ Tenant / customer organization.
 
 Login principal for the client LK.
 
-- `id`, `client_id`, `email`, `password_hash`, `role` (at least `owner`)
-- minimum one owner per client at creation time
+- `id`, `client_id`, `email`, `password_hash`, `name`, `role` (at least `owner`)
+- minimum one owner per client at creation time; additional owners may be added by Admin
 
 ### DefNumber
 

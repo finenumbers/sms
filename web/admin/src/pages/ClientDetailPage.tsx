@@ -5,6 +5,8 @@ import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHea
 import { api, type APIKey, type ClientBilling, type ClientDetail, type TariffPlan } from "../api";
 import { priceUnit, productLabel } from "../lookup";
 
+const TARIFF_PRODUCTS = ["sms_domestic", "sms_international", "hlr", "silent_sms"] as const;
+
 export function ClientDetailPage() {
   const { id = "" } = useParams();
   const nav = useNavigate();
@@ -26,7 +28,6 @@ export function ClientDetailPage() {
     queryFn: () => api.get<{ items: TariffPlan[] }>("/tariffs?limit=100"),
   });
   const [name, setName] = useState<string | null>(null);
-  const [password, setPassword] = useState("");
   const [keyName, setKeyName] = useState("основной");
   const [cidrs, setCidrs] = useState("");
   const [scopes, setScopes] = useState<string[]>(["sms:send", "sms:read", "campaigns:write"]);
@@ -37,8 +38,13 @@ export function ClientDetailPage() {
   const [adjustDir, setAdjustDir] = useState("credit");
   const [adjustComment, setAdjustComment] = useState("");
   const [allowNeg, setAllowNeg] = useState(false);
-  const [assignProduct, setAssignProduct] = useState("sms_domestic");
-  const [assignPlan, setAssignPlan] = useState("");
+  const [assignPlans, setAssignPlans] = useState<Record<string, string>>({});
+  const [addOpen, setAddOpen] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [resetUserID, setResetUserID] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
   const allScopes = ["sms:send", "sms:read", "campaigns:write", "lookup:write", "lookup:read"] as const;
 
   const patch = useMutation({
@@ -57,9 +63,31 @@ export function ClientDetailPage() {
     mutationFn: () => api.delete(`/clients/${id}`),
     onSuccess: () => nav("/clients"),
   });
-  const reset = useMutation({
-    mutationFn: () => api.post(`/clients/${id}/owner/password`, { password }),
-    onSuccess: () => setPassword(""),
+  const createUser = useMutation({
+    mutationFn: () => api.post(`/clients/${id}/users`, { name: newUserName, email: newUserEmail, password: newUserPassword }),
+    onSuccess: () => {
+      setAddOpen(false);
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserPassword("");
+      void qc.invalidateQueries({ queryKey: ["client", id] });
+    },
+  });
+  const resetUser = useMutation({
+    mutationFn: ({ userID, password }: { userID: string; password: string }) =>
+      api.post(`/clients/${id}/users/${userID}/password`, { password }),
+    onSuccess: () => {
+      setResetUserID("");
+      setResetPassword("");
+    },
+  });
+  const disableUser = useMutation({
+    mutationFn: (userID: string) => api.post(`/clients/${id}/users/${userID}/disable`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["client", id] }),
+  });
+  const enableUser = useMutation({
+    mutationFn: (userID: string) => api.post(`/clients/${id}/users/${userID}/enable`),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["client", id] }),
   });
   const createKey = useMutation({
     mutationFn: () =>
@@ -112,11 +140,7 @@ export function ClientDetailPage() {
     },
   });
   const assign = useMutation({
-    mutationFn: () =>
-      api.post(`/clients/${id}/tariff`, {
-        product: assignProduct,
-        tariff_plan_id: assignPlan,
-      }),
+    mutationFn: (arg: { product: string; tariff_plan_id: string }) => api.post(`/clients/${id}/tariff`, arg),
     onSuccess: () => void qc.invalidateQueries({ queryKey: ["client-billing", id] }),
   });
   const unassign = useMutation({
@@ -131,6 +155,9 @@ export function ClientDetailPage() {
     return <div className="text-sm text-zinc-500">Загрузка…</div>;
   }
   const c = q.data;
+  const assigned = Object.fromEntries((billing.data?.tariffs ?? []).map((t) => [t.product, t]));
+  const activeOwners = c.users.filter((u) => u.status === "active").length;
+
   return (
     <div>
       <PageHeader
@@ -180,28 +207,94 @@ export function ClientDetailPage() {
           {del.isError ? <div className="mt-2"><ErrorBox error={del.error} /></div> : null}
         </Card>
         <Card>
-          <h2 className="mb-3 font-medium">Пароль владельца</h2>
-          <Field label="Новый пароль (мин. 10)">
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={10} />
-          </Field>
-          <Button type="button" onClick={() => reset.mutate()} disabled={password.length < 10 || reset.isPending}>
-            Сбросить
-          </Button>
-          {reset.isSuccess ? <div className="mt-2"><Alert tone="green">Пароль обновлён, сессии отозваны</Alert></div> : null}
-          {reset.isError ? <div className="mt-2"><ErrorBox error={reset.error} /></div> : null}
-          <h3 className="mt-4 mb-2 text-sm font-medium">Пользователи</h3>
-          <ul className="text-sm text-zinc-700">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-medium">Участники</h2>
+            <Button type="button" onClick={() => setAddOpen((v) => !v)}>
+              Добавить пользователя
+            </Button>
+          </div>
+          {addOpen ? (
+            <div className="mb-4 rounded-lg border border-zinc-200 p-3">
+              <Field label="ФИО">
+                <Input value={newUserName} onChange={(e) => setNewUserName(e.target.value)} />
+              </Field>
+              <Field label="Email">
+                <Input type="email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+              </Field>
+              <Field label="Пароль (мин. 10)">
+                <Input type="password" value={newUserPassword} onChange={(e) => setNewUserPassword(e.target.value)} minLength={10} />
+              </Field>
+              {createUser.isError ? <ErrorBox error={createUser.error} /> : null}
+              <Button
+                type="button"
+                disabled={createUser.isPending || newUserName.trim() === "" || newUserEmail.trim() === "" || newUserPassword.length < 10}
+                onClick={() => createUser.mutate()}
+              >
+                Сохранить
+              </Button>
+            </div>
+          ) : null}
+          <ul className="space-y-3">
             {c.users.map((u) => (
-              <li key={u.id}>
-                {u.email} · {u.role} · {u.status}
+              <li key={u.id} className="rounded-lg border border-zinc-200 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="font-medium">{u.email}</div>
+                    <div className="text-sm text-zinc-500">
+                      {(u.name && u.name.trim()) || "—"} · {u.role.toUpperCase()}
+                    </div>
+                  </div>
+                  <Badge tone={u.status === "active" ? "green" : "zinc"}>{u.status.toUpperCase()}</Badge>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {u.status === "active" ? (
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      disabled={disableUser.isPending || activeOwners <= 1}
+                      onClick={() => {
+                        if (window.confirm(`Отключить ${u.email}?`)) {
+                          disableUser.mutate(u.id);
+                        }
+                      }}
+                    >
+                      Отключить
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" type="button" disabled={enableUser.isPending} onClick={() => enableUser.mutate(u.id)}>
+                      Включить
+                    </Button>
+                  )}
+                  <Button variant="ghost" type="button" onClick={() => setResetUserID(resetUserID === u.id ? "" : u.id)}>
+                    Сбросить пароль
+                  </Button>
+                </div>
+                {resetUserID === u.id ? (
+                  <div className="mt-2">
+                    <Field label="Новый пароль (мин. 10)">
+                      <Input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} minLength={10} />
+                    </Field>
+                    {resetUser.isError ? <ErrorBox error={resetUser.error} /> : null}
+                    {resetUser.isSuccess ? <Alert tone="green">Пароль обновлён, сессии этого пользователя отозваны</Alert> : null}
+                    <Button
+                      type="button"
+                      disabled={resetPassword.length < 10 || resetUser.isPending}
+                      onClick={() => resetUser.mutate({ userID: u.id, password: resetPassword })}
+                    >
+                      Сохранить пароль
+                    </Button>
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>
+          {disableUser.isError ? <div className="mt-2"><ErrorBox error={disableUser.error} /></div> : null}
+          {enableUser.isError ? <div className="mt-2"><ErrorBox error={enableUser.error} /></div> : null}
         </Card>
       </div>
       {billing.isError ? <div className="mb-4"><ErrorBox error={billing.error} /></div> : null}
       {billing.data ? (
-        <Card className="mb-4">
+        <Card className="mb-4 mt-4">
           <h2 className="mb-3 font-medium">Кошелёк</h2>
           <p className="mb-3 text-sm">
             доступно {formatMoney(billing.data.available_balance, billing.data.currency)} · заморожено{" "}
@@ -251,65 +344,71 @@ export function ClientDetailPage() {
             </div>
           </div>
           <h3 className="mt-4 mb-2 text-sm font-medium">Тарифы</h3>
-          <p className="mb-2 text-xs text-zinc-500">
+          <p className="mb-3 text-xs text-zinc-500">
             SMS / Russia — номера 7… как в направлениях платформы (включая 77…), не географическая Россия. HLR Lookup и
             Silent SMS назначаются отдельно, цена — за проверку, без себестоимости.
           </p>
-          <ul className="mb-3 text-sm">
-            {billing.data.tariffs.length === 0 ? <li>не назначены</li> : null}
-            {billing.data.tariffs.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center gap-2">
-                <span>
-                  {productLabel[t.product] ?? t.product}: {t.plan_name} · {formatMoney(t.sell_price, t.currency)}{" "}
-                  {priceUnit(t.product)}
-                </span>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  disabled={unassign.isPending}
-                  onClick={() => {
-                    if (window.confirm(`Снять тариф «${productLabel[t.product] ?? t.product}» с клиента?`)) {
-                      unassign.mutate(t.product);
-                    }
-                  }}
-                >
-                  Снять
-                </Button>
-              </li>
-            ))}
-          </ul>
-          <p className="mb-2 text-xs">
+          <div className="mb-3 grid gap-3 md:grid-cols-2">
+            {TARIFF_PRODUCTS.map((product) => {
+              const current = assigned[product];
+              const label = productLabel[product] ?? product;
+              const planID = assignPlans[product] ?? "";
+              const plans = (tariffs.data?.items ?? []).filter((p) => p.product === product && p.is_active);
+              return (
+                <div key={product} className="rounded-lg border border-zinc-200 p-3">
+                  <div className="font-medium">Тариф {label}</div>
+                  <div className="mt-1 text-sm text-zinc-500">
+                    {current
+                      ? `${current.plan_name} — ${formatMoney(current.sell_price, current.currency)} ${priceUnit(product)}${current.is_active === false ? " · план неактивен" : ""}`
+                      : "Не назначен"}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Select
+                      value={planID}
+                      onChange={(e) => setAssignPlans((cur) => ({ ...cur, [product]: e.target.value }))}
+                    >
+                      <option value="">{plans.length === 0 ? "нет активных планов" : "Выберите..."}</option>
+                      {plans.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name} · {formatMoney(p.sell_price, p.currency)}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      type="button"
+                      disabled={!planID || assign.isPending}
+                      onClick={() => {
+                        if (current && !window.confirm(`Заменить тариф «${label}»?`)) {
+                          return;
+                        }
+                        assign.mutate({ product, tariff_plan_id: planID });
+                      }}
+                    >
+                      Назначить
+                    </Button>
+                  </div>
+                  <Button
+                    className="mt-2"
+                    variant="secondary"
+                    type="button"
+                    disabled={!current || unassign.isPending}
+                    onClick={() => {
+                      if (window.confirm(`Снять тариф «${label}» с клиента?`)) {
+                        unassign.mutate(product);
+                      }
+                    }}
+                  >
+                    Снять
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <p className="mb-3 text-xs">
             <Link className="text-blue-700 hover:underline" to={`/jobs?client_id=${id}`}>
               Задания клиента
             </Link>
           </p>
-          <div className="mb-3 flex flex-wrap gap-2">
-            <Select
-              value={assignProduct}
-              onChange={(e) => {
-                setAssignProduct(e.target.value);
-                setAssignPlan("");
-              }}
-            >
-              <option value="sms_domestic">{productLabel.sms_domestic}</option>
-              <option value="sms_international">{productLabel.sms_international}</option>
-              <option value="hlr">{productLabel.hlr}</option>
-              <option value="silent_sms">{productLabel.silent_sms}</option>
-            </Select>
-            <Select value={assignPlan} onChange={(e) => setAssignPlan(e.target.value)}>
-              <option value="">план</option>
-              {(tariffs.data?.items ?? [])
-                .filter((p) => p.product === assignProduct && p.is_active)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.code} · {formatMoney(p.sell_price, p.currency)}
-                  </option>
-                ))}
-            </Select>
-            <Button type="button" variant="secondary" disabled={!assignPlan || assign.isPending} onClick={() => assign.mutate()}>
-              Назначить
-            </Button>
-          </div>
           {assign.isError ? <ErrorBox error={assign.error} /> : null}
           {unassign.isError ? <ErrorBox error={unassign.error} /> : null}
           <Table>

@@ -131,13 +131,7 @@ func (h *Handlers) GetClient(w http.ResponseWriter, r *http.Request) {
 	}
 	users := make([]map[string]any, 0, len(d.Users))
 	for _, u := range d.Users {
-		users = append(users, map[string]any{
-			"id":         u.ID,
-			"email":      u.Email,
-			"role":       u.Role,
-			"status":     u.Status,
-			"created_at": u.CreatedAt.UTC().Format(time.RFC3339),
-		})
+		users = append(users, clientUserJSON(u))
 	}
 	body := map[string]any{
 		"id":         d.Client.ID,
@@ -271,6 +265,140 @@ func (h *Handlers) ResetOwnerPassword(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+type createClientUserRequest struct {
+	Email    string `json:"email"`
+	Name     string `json:"name"`
+	Password string `json:"password"`
+}
+
+func (h *Handlers) CreateClientUser(w http.ResponseWriter, r *http.Request) {
+	p, ok := requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(w, r, "clientID")
+	if !ok {
+		return
+	}
+	var req createClientUserRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		return
+	}
+	user, err := h.Ident.CreateClientUser(r.Context(), identity.CreateClientUserInput{
+		ClientID: id,
+		Email:    req.Email,
+		Name:     req.Name,
+		Password: req.Password,
+	})
+	if err != nil {
+		writeClientErr(w, h, "create client user", err)
+		return
+	}
+	h.Audit.Write(r.Context(), audit.Event{
+		ActorType:    sqlcdb.ActorTypeAdmin,
+		ActorID:      p.AdminUserID,
+		ClientID:     &id,
+		Action:       "client.user.create",
+		ResourceType: "client_user",
+		ResourceID:   &user.ID,
+		IP:           httpx.ClientIP(r),
+		UserAgent:    httpx.UserAgent(r),
+		Metadata:     map[string]any{"email": user.Email},
+	})
+	httpx.WriteJSON(w, http.StatusCreated, clientUserJSON(user))
+}
+
+func (h *Handlers) ResetClientUserPassword(w http.ResponseWriter, r *http.Request) {
+	p, ok := requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(w, r, "clientID")
+	if !ok {
+		return
+	}
+	userID, ok := pathUUID(w, r, "userID")
+	if !ok {
+		return
+	}
+	var req resetOwnerPasswordRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		return
+	}
+	if err := h.Ident.ResetClientUserPassword(r.Context(), id, userID, req.Password); err != nil {
+		writeClientErr(w, h, "reset client user password", err)
+		return
+	}
+	h.Audit.Write(r.Context(), audit.Event{
+		ActorType:    sqlcdb.ActorTypeAdmin,
+		ActorID:      p.AdminUserID,
+		ClientID:     &id,
+		Action:       "client.user.password_reset",
+		ResourceType: "client_user",
+		ResourceID:   &userID,
+		IP:           httpx.ClientIP(r),
+		UserAgent:    httpx.UserAgent(r),
+	})
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *Handlers) DisableClientUser(w http.ResponseWriter, r *http.Request) {
+	h.changeClientUserStatus(w, r, "client.user.disable", func(clientID, userID uuid.UUID) (sqlcdb.ClientUser, error) {
+		return h.Ident.DisableClientUser(r.Context(), clientID, userID)
+	})
+}
+
+func (h *Handlers) EnableClientUser(w http.ResponseWriter, r *http.Request) {
+	h.changeClientUserStatus(w, r, "client.user.enable", func(clientID, userID uuid.UUID) (sqlcdb.ClientUser, error) {
+		return h.Ident.EnableClientUser(r.Context(), clientID, userID)
+	})
+}
+
+func (h *Handlers) changeClientUserStatus(w http.ResponseWriter, r *http.Request, action string, fn func(uuid.UUID, uuid.UUID) (sqlcdb.ClientUser, error)) {
+	p, ok := requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(w, r, "clientID")
+	if !ok {
+		return
+	}
+	userID, ok := pathUUID(w, r, "userID")
+	if !ok {
+		return
+	}
+	user, err := fn(id, userID)
+	if err != nil {
+		writeClientErr(w, h, action, err)
+		return
+	}
+	h.Audit.Write(r.Context(), audit.Event{
+		ActorType:    sqlcdb.ActorTypeAdmin,
+		ActorID:      p.AdminUserID,
+		ClientID:     &id,
+		Action:       action,
+		ResourceType: "client_user",
+		ResourceID:   &user.ID,
+		IP:           httpx.ClientIP(r),
+		UserAgent:    httpx.UserAgent(r),
+		Metadata:     map[string]any{"email": user.Email, "status": user.Status},
+	})
+	httpx.WriteJSON(w, http.StatusOK, clientUserJSON(user))
+}
+
+func clientUserJSON(u sqlcdb.ClientUser) map[string]any {
+	return map[string]any{
+		"id":         u.ID,
+		"email":      u.Email,
+		"name":       u.Name,
+		"role":       u.Role,
+		"status":     u.Status,
+		"created_at": u.CreatedAt.UTC().Format(time.RFC3339),
+	}
+}
+
 func (h *Handlers) changeClientStatus(w http.ResponseWriter, r *http.Request, action string, fn func(uuid.UUID) (sqlcdb.Client, error)) {
 	p, ok := requireAdmin(w, r)
 	if !ok {
@@ -302,7 +430,7 @@ func (h *Handlers) changeClientStatus(w http.ResponseWriter, r *http.Request, ac
 func writeClientErr(w http.ResponseWriter, h *Handlers, op string, err error) {
 	switch {
 	case errors.Is(err, identity.ErrEmailTaken):
-		httpx.WriteError(w, http.StatusConflict, "email_taken", "owner email already in use")
+		httpx.WriteError(w, http.StatusConflict, "email_taken", "email already in use")
 	case errors.Is(err, identity.ErrValidation):
 		httpx.WriteError(w, http.StatusBadRequest, "validation", err.Error())
 	case errors.Is(err, identity.ErrNotFound):

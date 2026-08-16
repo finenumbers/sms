@@ -100,6 +100,18 @@ func (q *Queries) RevokeSessionsForClient(ctx context.Context, clientID uuid.UUI
 	return err
 }
 
+const revokeSessionsForClientUser = `-- name: RevokeSessionsForClientUser :exec
+UPDATE sessions
+SET revoked_at = now()
+WHERE client_user_id = $1
+  AND revoked_at IS NULL
+`
+
+func (q *Queries) RevokeSessionsForClientUser(ctx context.Context, clientUserID *uuid.UUID) error {
+	_, err := q.db.Exec(ctx, revokeSessionsForClientUser, clientUserID)
+	return err
+}
+
 const touchSession = `-- name: TouchSession :exec
 UPDATE sessions
 SET last_seen_at = now(), expires_at = $1

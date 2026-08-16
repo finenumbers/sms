@@ -23,3 +23,9 @@ FROM client_users u
 WHERE s.client_user_id = u.id
   AND u.client_id = sqlc.arg(client_id)
   AND s.revoked_at IS NULL;
+
+-- name: RevokeSessionsForClientUser :exec
+UPDATE sessions
+SET revoked_at = now()
+WHERE client_user_id = sqlc.arg(client_user_id)
+  AND revoked_at IS NULL;

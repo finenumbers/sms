@@ -14,6 +14,7 @@ sql:
       - "db/migrations/000009_lookup_enrich.up.sql"
       - "db/migrations/000010_smsc_settings.up.sql"
       - "db/migrations/000012_lookup_job_reachability.up.sql"
+      - "db/migrations/000013_client_user_name.up.sql"
     gen:
       go:
         package: "sqlcdb"

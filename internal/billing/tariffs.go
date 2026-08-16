@@ -83,6 +83,17 @@ func trimCurrency(s string) string {
 	return strings.TrimSpace(s)
 }
 
+// AssertPlanAssignable rejects a catalog plan that cannot be assigned to product.
+func AssertPlanAssignable(plan sqlcdb.TariffPlan, product sqlcdb.BillingProduct) error {
+	if plan.Product != product {
+		return wrap(ErrValidation, "validation", "tariff plan product mismatch")
+	}
+	if !plan.IsActive {
+		return wrap(ErrInvalidTariff, "invalid_tariff", "tariff plan is inactive")
+	}
+	return nil
+}
+
 func (s *Service) Estimate(ctx context.Context, clientID uuid.UUID, dest msisdn.Dest, text string) (Estimate, error) {
 	product := ProductForDest(dest)
 	tariff, err := s.ResolveTariff(ctx, nil, clientID, product)

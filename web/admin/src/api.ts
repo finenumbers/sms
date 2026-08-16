@@ -22,7 +22,7 @@ export type ClientDetail = {
   status: string;
   created_at: string;
   updated_at: string;
-  users: { id: string; email: string; role: string; status: string; created_at: string }[];
+  users: { id: string; email: string; name?: string; role: string; status: string; created_at: string }[];
   available_balance?: string;
   held_balance?: string;
   currency?: string;
@@ -171,6 +171,7 @@ export type ClientBilling = {
     sell_price: string;
     price_override?: string | null;
     currency: string;
+    is_active?: boolean;
   }[];
   ledger: LedgerRow[];
 };

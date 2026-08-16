@@ -11,8 +11,33 @@ import (
 	"github.com/google/uuid"
 )
 
+const countActiveOwnersByClientID = `-- name: CountActiveOwnersByClientID :one
+SELECT count(*)::bigint FROM client_users
+WHERE client_id = $1
+  AND role = 'owner'
+  AND status = 'active'
+`
+
+func (q *Queries) CountActiveOwnersByClientID(ctx context.Context, clientID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveOwnersByClientID, clientID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const countClientUsersByClientID = `-- name: CountClientUsersByClientID :one
+SELECT count(*)::bigint FROM client_users WHERE client_id = $1
+`
+
+func (q *Queries) CountClientUsersByClientID(ctx context.Context, clientID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countClientUsersByClientID, clientID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const getClientUserByEmail = `-- name: GetClientUserByEmail :one
-SELECT id, client_id, email, password_hash, role, status, created_at, updated_at FROM client_users WHERE LOWER(email) = LOWER($1) LIMIT 1
+SELECT id, client_id, email, password_hash, role, status, created_at, updated_at, name FROM client_users WHERE LOWER(email) = LOWER($1) LIMIT 1
 `
 
 func (q *Queries) GetClientUserByEmail(ctx context.Context, email string) (ClientUser, error) {
@@ -27,12 +52,13 @@ func (q *Queries) GetClientUserByEmail(ctx context.Context, email string) (Clien
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
 
 const getClientUserByID = `-- name: GetClientUserByID :one
-SELECT id, client_id, email, password_hash, role, status, created_at, updated_at FROM client_users WHERE id = $1
+SELECT id, client_id, email, password_hash, role, status, created_at, updated_at, name FROM client_users WHERE id = $1
 `
 
 func (q *Queries) GetClientUserByID(ctx context.Context, id uuid.UUID) (ClientUser, error) {
@@ -47,12 +73,13 @@ func (q *Queries) GetClientUserByID(ctx context.Context, id uuid.UUID) (ClientUs
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
 
 const getOwnerByClientID = `-- name: GetOwnerByClientID :one
-SELECT id, client_id, email, password_hash, role, status, created_at, updated_at FROM client_users
+SELECT id, client_id, email, password_hash, role, status, created_at, updated_at, name FROM client_users
 WHERE client_id = $1 AND role = 'owner'
 ORDER BY created_at
 LIMIT 1
@@ -70,24 +97,31 @@ func (q *Queries) GetOwnerByClientID(ctx context.Context, clientID uuid.UUID) (C
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
 
 const insertClientUser = `-- name: InsertClientUser :one
-INSERT INTO client_users (client_id, email, password_hash, role, status)
-VALUES ($1, $2, $3, 'owner', 'active')
-RETURNING id, client_id, email, password_hash, role, status, created_at, updated_at
+INSERT INTO client_users (client_id, email, password_hash, name, role, status)
+VALUES ($1, $2, $3, $4, 'owner', 'active')
+RETURNING id, client_id, email, password_hash, role, status, created_at, updated_at, name
 `
 
 type InsertClientUserParams struct {
 	ClientID     uuid.UUID `json:"client_id"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
+	Name         string    `json:"name"`
 }
 
 func (q *Queries) InsertClientUser(ctx context.Context, arg InsertClientUserParams) (ClientUser, error) {
-	row := q.db.QueryRow(ctx, insertClientUser, arg.ClientID, arg.Email, arg.PasswordHash)
+	row := q.db.QueryRow(ctx, insertClientUser,
+		arg.ClientID,
+		arg.Email,
+		arg.PasswordHash,
+		arg.Name,
+	)
 	var i ClientUser
 	err := row.Scan(
 		&i.ID,
@@ -98,12 +132,13 @@ func (q *Queries) InsertClientUser(ctx context.Context, arg InsertClientUserPara
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Name,
 	)
 	return i, err
 }
 
 const listClientUsersByClientID = `-- name: ListClientUsersByClientID :many
-SELECT id, client_id, email, password_hash, role, status, created_at, updated_at FROM client_users
+SELECT id, client_id, email, password_hash, role, status, created_at, updated_at, name FROM client_users
 WHERE client_id = $1
 ORDER BY created_at
 `
@@ -126,6 +161,7 @@ func (q *Queries) ListClientUsersByClientID(ctx context.Context, clientID uuid.U
 			&i.Status,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Name,
 		); err != nil {
 			return nil, err
 		}
@@ -151,4 +187,33 @@ type UpdateClientUserPasswordParams struct {
 func (q *Queries) UpdateClientUserPassword(ctx context.Context, arg UpdateClientUserPasswordParams) error {
 	_, err := q.db.Exec(ctx, updateClientUserPassword, arg.PasswordHash, arg.ID)
 	return err
+}
+
+const updateClientUserStatus = `-- name: UpdateClientUserStatus :one
+UPDATE client_users
+SET status = $1, updated_at = now()
+WHERE id = $2
+RETURNING id, client_id, email, password_hash, role, status, created_at, updated_at, name
+`
+
+type UpdateClientUserStatusParams struct {
+	Status UserStatus `json:"status"`
+	ID     uuid.UUID  `json:"id"`
+}
+
+func (q *Queries) UpdateClientUserStatus(ctx context.Context, arg UpdateClientUserStatusParams) (ClientUser, error) {
+	row := q.db.QueryRow(ctx, updateClientUserStatus, arg.Status, arg.ID)
+	var i ClientUser
+	err := row.Scan(
+		&i.ID,
+		&i.ClientID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+	)
+	return i, err
 }

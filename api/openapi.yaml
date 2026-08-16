@@ -223,6 +223,8 @@ paths:
           description: Assigned
         "400":
           description: Invalid product or plan
+        "404":
+          description: Client or plan not found
   /admin/v1/clients/{clientID}/tariff/{product}:
     delete:
       tags: [admin]
@@ -242,6 +244,82 @@ paths:
           description: Assignment removed; client falls back to no sell price for the product
         "404":
           description: No assignment for this product
+        "400":
+          description: Invalid product or plan
+  /admin/v1/clients/{clientID}/users:
+    post:
+      tags: [admin]
+      operationId: adminCreateClientUser
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, name, password]
+              properties:
+                email:
+                  type: string
+                name:
+                  type: string
+                password:
+                  type: string
+                  minLength: 10
+      responses:
+        "201":
+          description: Owner created
+        "409":
+          description: Email taken or user limit
+  /admin/v1/clients/{clientID}/users/{userID}/password:
+    post:
+      tags: [admin]
+      operationId: adminResetClientUserPassword
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetPasswordRequest"
+      responses:
+        "204":
+          description: Password updated; that user's sessions revoked
+        "404":
+          description: User not on this client
+  /admin/v1/clients/{clientID}/users/{userID}/disable:
+    post:
+      tags: [admin]
+      operationId: adminDisableClientUser
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: Disabled
+        "409":
+          description: Last active owner
+  /admin/v1/clients/{clientID}/users/{userID}/enable:
+    post:
+      tags: [admin]
+      operationId: adminEnableClientUser
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+        - $ref: "#/components/parameters/UserID"
+      responses:
+        "200":
+          description: Enabled
   /admin/v1/clients/{clientID}/owner/password:
     post:
       tags: [admin]
@@ -1792,6 +1870,13 @@ components:
       schema:
         type: string
         format: uuid
+    UserID:
+      name: userID
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
     NumberID:
       name: numberID
       in: path
@@ -1968,6 +2053,8 @@ components:
                 type: string
                 format: uuid
               email:
+                type: string
+              name:
                 type: string
               role:
                 type: string

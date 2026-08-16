@@ -25,57 +25,6 @@ func (q *Queries) BumpLookupItemEnrichAttempt(ctx context.Context, id uuid.UUID)
 	return err
 }
 
-const claimItemForSubmit = `-- name: ClaimItemForSubmit :one
-UPDATE lookup_items
-SET status = 'reserved', updated_at = now()
-WHERE id = $1
-  AND status IN ('queued', 'reserved')
-RETURNING id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
-`
-
-func (q *Queries) ClaimItemForSubmit(ctx context.Context, id uuid.UUID) (LookupItem, error) {
-	row := q.db.QueryRow(ctx, claimItemForSubmit, id)
-	var i LookupItem
-	err := row.Scan(
-		&i.ID,
-		&i.JobID,
-		&i.ClientID,
-		&i.CheckType,
-		&i.Status,
-		&i.PhoneE164,
-		&i.PhoneDigits,
-		&i.ProviderCode,
-		&i.ProviderMessageID,
-		&i.UnitSellPrice,
-		&i.TariffPlanID,
-		&i.TariffPlanCode,
-		&i.Currency,
-		&i.EstimatedCost,
-		&i.ActualCost,
-		&i.ResultStatus,
-		&i.IsReachable,
-		&i.Imsi,
-		&i.Mcc,
-		&i.Mnc,
-		&i.OperatorName,
-		&i.CountryCode,
-		&i.Ported,
-		&i.Roaming,
-		&i.NormalizedResult,
-		&i.ErrorCode,
-		&i.ErrorMessage,
-		&i.BillingAction,
-		&i.NextPollAt,
-		&i.PollAttempts,
-		&i.SentAt,
-		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.EnrichAttempts,
-	)
-	return i, err
-}
-
 const claimLookupCSVPreviewReady = `-- name: ClaimLookupCSVPreviewReady :one
 UPDATE lookup_csv_previews
 SET status = 'consuming',
@@ -553,44 +502,6 @@ func (q *Queries) CountLookupItemsForClient(ctx context.Context, arg CountLookup
 	var n int64
 	err := row.Scan(&n)
 	return n, err
-}
-
-const countLookupItemsSinceByStatusForClient = `-- name: CountLookupItemsSinceByStatusForClient :many
-SELECT status, count(*)::bigint AS n
-FROM lookup_items
-WHERE client_id = $1
-  AND created_at >= $2
-GROUP BY status
-`
-
-type CountLookupItemsSinceByStatusForClientParams struct {
-	ClientID uuid.UUID `json:"client_id"`
-	Since    time.Time `json:"since"`
-}
-
-type CountLookupItemsSinceByStatusForClientRow struct {
-	Status LookupItemStatus `json:"status"`
-	N      int64            `json:"n"`
-}
-
-func (q *Queries) CountLookupItemsSinceByStatusForClient(ctx context.Context, arg CountLookupItemsSinceByStatusForClientParams) ([]CountLookupItemsSinceByStatusForClientRow, error) {
-	rows, err := q.db.Query(ctx, countLookupItemsSinceByStatusForClient, arg.ClientID, arg.Since)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CountLookupItemsSinceByStatusForClientRow
-	for rows.Next() {
-		var i CountLookupItemsSinceByStatusForClientRow
-		if err := rows.Scan(&i.Status, &i.N); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
 
 const countLookupItemsSinceByTypeForClient = `-- name: CountLookupItemsSinceByTypeForClient :many
@@ -1622,73 +1533,6 @@ func (q *Queries) ListJobsNeedingFinalize(ctx context.Context, pageLimit int32) 
 	return items, nil
 }
 
-const listJobsNeedingSubmitResume = `-- name: ListJobsNeedingSubmitResume :many
-SELECT j.id, j.client_id, j.check_type, j.source, j.status, j.item_count, j.success_count, j.failure_count, j.unit_sell_price, j.tariff_plan_id, j.tariff_plan_code, j.currency, j.estimated_cost, j.actual_cost, j.original_filename, j.idempotency_key, j.created_by, j.api_credential_id, j.error_code, j.error_message, j.started_at, j.completed_at, j.metadata, j.created_at, j.updated_at, j.reachable_count, j.unreachable_count
-FROM lookup_jobs j
-WHERE j.status IN ('queued', 'processing')
-  AND j.item_count > 0
-  AND EXISTS (
-      SELECT 1 FROM lookup_items i
-      WHERE i.job_id = j.id AND i.status = 'queued'
-  )
-  AND j.updated_at <= $1
-ORDER BY j.updated_at
-LIMIT $2
-`
-
-type ListJobsNeedingSubmitResumeParams struct {
-	OlderThan time.Time `json:"older_than"`
-	PageLimit int32     `json:"page_limit"`
-}
-
-func (q *Queries) ListJobsNeedingSubmitResume(ctx context.Context, arg ListJobsNeedingSubmitResumeParams) ([]LookupJob, error) {
-	rows, err := q.db.Query(ctx, listJobsNeedingSubmitResume, arg.OlderThan, arg.PageLimit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []LookupJob
-	for rows.Next() {
-		var i LookupJob
-		if err := rows.Scan(
-			&i.ID,
-			&i.ClientID,
-			&i.CheckType,
-			&i.Source,
-			&i.Status,
-			&i.ItemCount,
-			&i.SuccessCount,
-			&i.FailureCount,
-			&i.UnitSellPrice,
-			&i.TariffPlanID,
-			&i.TariffPlanCode,
-			&i.Currency,
-			&i.EstimatedCost,
-			&i.ActualCost,
-			&i.OriginalFilename,
-			&i.IdempotencyKey,
-			&i.CreatedBy,
-			&i.ApiCredentialID,
-			&i.ErrorCode,
-			&i.ErrorMessage,
-			&i.StartedAt,
-			&i.CompletedAt,
-			&i.Metadata,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.ReachableCount,
-			&i.UnreachableCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listLookupItemsByJob = `-- name: ListLookupItemsByJob :many
 SELECT id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
 FROM lookup_items
@@ -2271,34 +2115,6 @@ func (q *Queries) ListOpenLookupItemsForCallbackSendID(ctx context.Context, arg 
 	return items, nil
 }
 
-const listQueuedLookupItemIDs = `-- name: ListQueuedLookupItemIDs :many
-SELECT id
-FROM lookup_items
-WHERE job_id = $1
-  AND status = 'queued'
-ORDER BY created_at, id
-`
-
-func (q *Queries) ListQueuedLookupItemIDs(ctx context.Context, jobID uuid.UUID) ([]uuid.UUID, error) {
-	rows, err := q.db.Query(ctx, listQueuedLookupItemIDs, jobID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []uuid.UUID
-	for rows.Next() {
-		var id uuid.UUID
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listRecentProviderLookupCallbacks = `-- name: ListRecentProviderLookupCallbacks :many
 SELECT id, provider_code, provider_message_id, signature_valid, processed_at, process_error, raw_payload, created_at
 FROM provider_lookup_callbacks
@@ -2724,54 +2540,6 @@ func (q *Queries) PatchLookupJobAfterParse(ctx context.Context, arg PatchLookupJ
 		arg.OriginalFilename,
 		arg.ID,
 	)
-	var i LookupJob
-	err := row.Scan(
-		&i.ID,
-		&i.ClientID,
-		&i.CheckType,
-		&i.Source,
-		&i.Status,
-		&i.ItemCount,
-		&i.SuccessCount,
-		&i.FailureCount,
-		&i.UnitSellPrice,
-		&i.TariffPlanID,
-		&i.TariffPlanCode,
-		&i.Currency,
-		&i.EstimatedCost,
-		&i.ActualCost,
-		&i.OriginalFilename,
-		&i.IdempotencyKey,
-		&i.CreatedBy,
-		&i.ApiCredentialID,
-		&i.ErrorCode,
-		&i.ErrorMessage,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.Metadata,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.ReachableCount,
-		&i.UnreachableCount,
-	)
-	return i, err
-}
-
-const patchLookupJobMetadata = `-- name: PatchLookupJobMetadata :one
-UPDATE lookup_jobs
-SET metadata = $1,
-    updated_at = now()
-WHERE id = $2
-RETURNING id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
-`
-
-type PatchLookupJobMetadataParams struct {
-	Metadata []byte    `json:"metadata"`
-	ID       uuid.UUID `json:"id"`
-}
-
-func (q *Queries) PatchLookupJobMetadata(ctx context.Context, arg PatchLookupJobMetadataParams) (LookupJob, error) {
-	row := q.db.QueryRow(ctx, patchLookupJobMetadata, arg.Metadata, arg.ID)
 	var i LookupJob
 	err := row.Scan(
 		&i.ID,

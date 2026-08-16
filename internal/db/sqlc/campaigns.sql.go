@@ -212,30 +212,6 @@ func (q *Queries) DeleteCampaignDraft(ctx context.Context, arg DeleteCampaignDra
 	return result.RowsAffected(), nil
 }
 
-const getCampaignByID = `-- name: GetCampaignByID :one
-SELECT id, client_id, from_msisdn, text, status, total_count, accepted_count, delivered_count, failed_count, created_by, created_at, updated_at FROM sms_campaigns WHERE id = $1
-`
-
-func (q *Queries) GetCampaignByID(ctx context.Context, id uuid.UUID) (SmsCampaign, error) {
-	row := q.db.QueryRow(ctx, getCampaignByID, id)
-	var i SmsCampaign
-	err := row.Scan(
-		&i.ID,
-		&i.ClientID,
-		&i.FromMsisdn,
-		&i.Text,
-		&i.Status,
-		&i.TotalCount,
-		&i.AcceptedCount,
-		&i.DeliveredCount,
-		&i.FailedCount,
-		&i.CreatedBy,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getCampaignForClient = `-- name: GetCampaignForClient :one
 SELECT id, client_id, from_msisdn, text, status, total_count, accepted_count, delivered_count, failed_count, created_by, created_at, updated_at FROM sms_campaigns
 WHERE id = $1 AND client_id = $2::uuid

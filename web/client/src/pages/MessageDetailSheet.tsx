@@ -3,7 +3,7 @@ import type { Message } from "../api";
 
 export const smsInflight = new Set(["queued", "accepted", "sent"]);
 
-export function MessageDetailBody({ m }: { m: Message }) {
+function MessageDetailBody({ m }: { m: Message }) {
   return (
     <>
       <div className="mb-3">

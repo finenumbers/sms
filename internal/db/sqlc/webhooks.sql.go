@@ -133,36 +133,6 @@ func (q *Queries) DeleteWebhookEndpoint(ctx context.Context, arg DeleteWebhookEn
 	return result.RowsAffected(), nil
 }
 
-const getWebhookDelivery = `-- name: GetWebhookDelivery :one
-SELECT id, client_id, endpoint_id, job_id, job_item_id, event_type, payload, status, attempt_count, max_attempts, next_attempt_at, last_response_code, last_error, delivered_at, created_at, updated_at
-FROM webhook_deliveries
-WHERE id = $1
-`
-
-func (q *Queries) GetWebhookDelivery(ctx context.Context, id uuid.UUID) (WebhookDelivery, error) {
-	row := q.db.QueryRow(ctx, getWebhookDelivery, id)
-	var i WebhookDelivery
-	err := row.Scan(
-		&i.ID,
-		&i.ClientID,
-		&i.EndpointID,
-		&i.JobID,
-		&i.JobItemID,
-		&i.EventType,
-		&i.Payload,
-		&i.Status,
-		&i.AttemptCount,
-		&i.MaxAttempts,
-		&i.NextAttemptAt,
-		&i.LastResponseCode,
-		&i.LastError,
-		&i.DeliveredAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getWebhookEndpoint = `-- name: GetWebhookEndpoint :one
 SELECT id, client_id, url, secret_ciphertext, dek_key_id, description, enabled, events, consecutive_failures, created_at, updated_at
 FROM webhook_endpoints

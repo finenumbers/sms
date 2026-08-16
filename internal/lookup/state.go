@@ -23,21 +23,6 @@ var itemTransitions = map[sqlcdb.LookupItemStatus][]sqlcdb.LookupItemStatus{
 	sqlcdb.LookupItemStatusFailed:    {},
 }
 
-var jobTransitions = map[sqlcdb.LookupJobStatus][]sqlcdb.LookupJobStatus{
-	sqlcdb.LookupJobStatusQueued: {
-		sqlcdb.LookupJobStatusProcessing,
-		sqlcdb.LookupJobStatusFailed,
-	},
-	sqlcdb.LookupJobStatusProcessing: {
-		sqlcdb.LookupJobStatusCompleted,
-		sqlcdb.LookupJobStatusCompletedWithErrors,
-		sqlcdb.LookupJobStatusFailed,
-	},
-	sqlcdb.LookupJobStatusCompleted:           {},
-	sqlcdb.LookupJobStatusCompletedWithErrors: {},
-	sqlcdb.LookupJobStatusFailed:              {},
-}
-
 func IsTerminalItem(status sqlcdb.LookupItemStatus) bool {
 	return status == sqlcdb.LookupItemStatusCompleted || status == sqlcdb.LookupItemStatusFailed
 }
@@ -61,18 +46,6 @@ func CanTransitionItem(from, to sqlcdb.LookupItemStatus) bool {
 		return true
 	}
 	for _, next := range itemTransitions[from] {
-		if next == to {
-			return true
-		}
-	}
-	return false
-}
-
-func CanTransitionJob(from, to sqlcdb.LookupJobStatus) bool {
-	if from == to {
-		return true
-	}
-	for _, next := range jobTransitions[from] {
 		if next == to {
 			return true
 		}

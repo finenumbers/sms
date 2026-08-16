@@ -3,12 +3,6 @@ INSERT INTO send_jobs (sms_message_id, client_id, status)
 VALUES ($1, $2, 'pending')
 RETURNING *;
 
--- name: GetSendJobByID :one
-SELECT * FROM send_jobs WHERE id = sqlc.arg(id);
-
--- name: GetSendJobByMessageID :one
-SELECT * FROM send_jobs WHERE sms_message_id = sqlc.arg(sms_message_id);
-
 -- name: ClaimSendJobsFair :many
 UPDATE send_jobs AS s
 SET

@@ -43,7 +43,6 @@ type Config struct {
 	MetricsAddr       string
 	AdminSPADir       string
 	ClientSPADir      string
-	AppEnv            string
 }
 
 func (c Config) APIKeyPepperValue() string {
@@ -86,7 +85,6 @@ func Load() (Config, error) {
 		MetricsAddr:       env("METRICS_ADDR", ""),
 		AdminSPADir:       env("ADMIN_SPA_DIR", "/srv/admin"),
 		ClientSPADir:      env("CLIENT_SPA_DIR", "/srv/client"),
-		AppEnv:            env("APP_ENV", ""),
 	}
 	if cfg.DatabaseURL == "" {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")

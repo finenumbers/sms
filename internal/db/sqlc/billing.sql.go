@@ -89,52 +89,6 @@ func (q *Queries) CountOutboundSmsSinceByProduct(ctx context.Context, since time
 	return items, nil
 }
 
-const countOutboundSmsSinceByProductForClient = `-- name: CountOutboundSmsSinceByProductForClient :many
-SELECT
-    CASE
-        WHEN p.product IS NOT NULL THEN p.product::text
-        WHEN m.to_msisdn ~ '^7[0-9]{10}$' THEN 'sms_domestic'
-        ELSE 'sms_international'
-    END AS product,
-    count(*)::bigint AS n
-FROM sms_messages m
-LEFT JOIN tariff_plans p ON p.id = m.tariff_plan_id
-WHERE m.direction = 'outbound'
-  AND m.client_id = $1
-  AND m.created_at >= $2
-GROUP BY 1
-`
-
-type CountOutboundSmsSinceByProductForClientParams struct {
-	ClientID *uuid.UUID `json:"client_id"`
-	Since    time.Time  `json:"since"`
-}
-
-type CountOutboundSmsSinceByProductForClientRow struct {
-	Product string `json:"product"`
-	N       int64  `json:"n"`
-}
-
-func (q *Queries) CountOutboundSmsSinceByProductForClient(ctx context.Context, arg CountOutboundSmsSinceByProductForClientParams) ([]CountOutboundSmsSinceByProductForClientRow, error) {
-	rows, err := q.db.Query(ctx, countOutboundSmsSinceByProductForClient, arg.ClientID, arg.Since)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []CountOutboundSmsSinceByProductForClientRow
-	for rows.Next() {
-		var i CountOutboundSmsSinceByProductForClientRow
-		if err := rows.Scan(&i.Product, &i.N); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const countOutboundSmsSinceByStatus = `-- name: CountOutboundSmsSinceByStatus :many
 SELECT status, count(*)::bigint AS n
 FROM sms_messages
@@ -320,29 +274,6 @@ func (q *Queries) GetOpenHoldForMessage(ctx context.Context, smsMessageID *uuid.
 		&i.CreatedAt,
 		&i.LookupJobID,
 		&i.LookupItemID,
-	)
-	return i, err
-}
-
-const getTariffPlanByCode = `-- name: GetTariffPlanByCode :one
-SELECT id, code, name, product, sell_price, currency, is_default, is_active, description, created_at, updated_at FROM tariff_plans WHERE code = $1
-`
-
-func (q *Queries) GetTariffPlanByCode(ctx context.Context, code string) (TariffPlan, error) {
-	row := q.db.QueryRow(ctx, getTariffPlanByCode, code)
-	var i TariffPlan
-	err := row.Scan(
-		&i.ID,
-		&i.Code,
-		&i.Name,
-		&i.Product,
-		&i.SellPrice,
-		&i.Currency,
-		&i.IsDefault,
-		&i.IsActive,
-		&i.Description,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -920,66 +851,6 @@ type SetSmsMessageBillingActionParams struct {
 
 func (q *Queries) SetSmsMessageBillingAction(ctx context.Context, arg SetSmsMessageBillingActionParams) (SmsMessage, error) {
 	row := q.db.QueryRow(ctx, setSmsMessageBillingAction, arg.BillingAction, arg.ID)
-	var i SmsMessage
-	err := row.Scan(
-		&i.ID,
-		&i.ClientID,
-		&i.Direction,
-		&i.FromMsisdn,
-		&i.ToMsisdn,
-		&i.Text,
-		&i.Provider,
-		&i.ProviderSmsID,
-		&i.ProviderStatus,
-		&i.PduCount,
-		&i.CampaignID,
-		&i.Status,
-		&i.IdempotencyKey,
-		&i.CreatedAt,
-		&i.AcceptedAt,
-		&i.SentAt,
-		&i.DeliveredAt,
-		&i.FailedAt,
-		&i.UnitSellPrice,
-		&i.BilledSegments,
-		&i.TariffPlanID,
-		&i.TariffPlanCode,
-		&i.Currency,
-		&i.BillingAction,
-	)
-	return i, err
-}
-
-const setSmsMessageBillingSnapshot = `-- name: SetSmsMessageBillingSnapshot :one
-UPDATE sms_messages
-SET
-    unit_sell_price = $1,
-    billed_segments = $2,
-    tariff_plan_id = $3,
-    tariff_plan_code = $4,
-    currency = $5
-WHERE id = $6
-RETURNING id, client_id, direction, from_msisdn, to_msisdn, text, provider, provider_sms_id, provider_status, pdu_count, campaign_id, status, idempotency_key, created_at, accepted_at, sent_at, delivered_at, failed_at, unit_sell_price, billed_segments, tariff_plan_id, tariff_plan_code, currency, billing_action
-`
-
-type SetSmsMessageBillingSnapshotParams struct {
-	UnitSellPrice  *decimal.Decimal `json:"unit_sell_price"`
-	BilledSegments *int32           `json:"billed_segments"`
-	TariffPlanID   *uuid.UUID       `json:"tariff_plan_id"`
-	TariffPlanCode *string          `json:"tariff_plan_code"`
-	Currency       *string          `json:"currency"`
-	ID             uuid.UUID        `json:"id"`
-}
-
-func (q *Queries) SetSmsMessageBillingSnapshot(ctx context.Context, arg SetSmsMessageBillingSnapshotParams) (SmsMessage, error) {
-	row := q.db.QueryRow(ctx, setSmsMessageBillingSnapshot,
-		arg.UnitSellPrice,
-		arg.BilledSegments,
-		arg.TariffPlanID,
-		arg.TariffPlanCode,
-		arg.Currency,
-		arg.ID,
-	)
 	var i SmsMessage
 	err := row.Scan(
 		&i.ID,

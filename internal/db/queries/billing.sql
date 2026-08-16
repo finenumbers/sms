@@ -140,9 +140,6 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 -- name: GetTariffPlanByID :one
 SELECT * FROM tariff_plans WHERE id = sqlc.arg(id);
 
--- name: GetTariffPlanByCode :one
-SELECT * FROM tariff_plans WHERE code = sqlc.arg(code);
-
 -- name: InsertTariffPlan :one
 INSERT INTO tariff_plans (code, name, product, sell_price, currency, is_default, is_active, description)
 VALUES (
@@ -219,17 +216,6 @@ RETURNING *;
 DELETE FROM client_tariffs
 WHERE client_id = sqlc.arg(client_id) AND product = sqlc.arg(product);
 
--- name: SetSmsMessageBillingSnapshot :one
-UPDATE sms_messages
-SET
-    unit_sell_price = sqlc.arg(unit_sell_price),
-    billed_segments = sqlc.arg(billed_segments),
-    tariff_plan_id = sqlc.arg(tariff_plan_id),
-    tariff_plan_code = sqlc.arg(tariff_plan_code),
-    currency = sqlc.arg(currency)
-WHERE id = sqlc.arg(id)
-RETURNING *;
-
 -- name: SetSmsMessageBillingAction :one
 UPDATE sms_messages
 SET billing_action = sqlc.arg(billing_action)
@@ -271,18 +257,3 @@ WHERE direction = 'outbound'
   AND client_id = sqlc.arg(client_id)
   AND created_at >= sqlc.arg(since)
 GROUP BY status;
-
--- name: CountOutboundSmsSinceByProductForClient :many
-SELECT
-    CASE
-        WHEN p.product IS NOT NULL THEN p.product::text
-        WHEN m.to_msisdn ~ '^7[0-9]{10}$' THEN 'sms_domestic'
-        ELSE 'sms_international'
-    END AS product,
-    count(*)::bigint AS n
-FROM sms_messages m
-LEFT JOIN tariff_plans p ON p.id = m.tariff_plan_id
-WHERE m.direction = 'outbound'
-  AND m.client_id = sqlc.arg(client_id)
-  AND m.created_at >= sqlc.arg(since)
-GROUP BY 1;

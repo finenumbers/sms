@@ -2,7 +2,6 @@ package lookup
 
 import (
 	"errors"
-	"fmt"
 )
 
 var (
@@ -50,8 +49,4 @@ func AsError(err error) *Error {
 		return e
 	}
 	return nil
-}
-
-func fmtWrap(err error, code, format string, args ...any) error {
-	return wrap(err, code, fmt.Sprintf(format, args...))
 }

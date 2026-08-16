@@ -62,13 +62,6 @@ FROM lookup_items
 WHERE job_id = sqlc.arg(job_id)
 ORDER BY created_at, id;
 
--- name: ListQueuedLookupItemIDs :many
-SELECT id
-FROM lookup_items
-WHERE job_id = sqlc.arg(job_id)
-  AND status = 'queued'
-ORDER BY created_at, id;
-
 -- name: ClaimQueuedLookupItemsFair :many
 UPDATE lookup_items AS i
 SET status = 'reserved', updated_at = now()
@@ -131,13 +124,6 @@ WHERE i.id IN (
         FOR UPDATE OF i SKIP LOCKED
     ) j
 )
-RETURNING *;
-
--- name: ClaimItemForSubmit :one
-UPDATE lookup_items
-SET status = 'reserved', updated_at = now()
-WHERE id = sqlc.arg(id)
-  AND status IN ('queued', 'reserved')
 RETURNING *;
 
 -- name: ClaimPendingLookupItemsFair :many
@@ -214,13 +200,6 @@ SET status = sqlc.arg(status),
     updated_at = now()
 WHERE id = sqlc.arg(id)
   AND status IN ('queued', 'processing')
-RETURNING *;
-
--- name: PatchLookupJobMetadata :one
-UPDATE lookup_jobs
-SET metadata = sqlc.arg(metadata),
-    updated_at = now()
-WHERE id = sqlc.arg(id)
 RETURNING *;
 
 -- name: TransitionLookupItem :one
@@ -348,19 +327,6 @@ WHERE status = 'processing'
   AND item_count > 0
   AND item_count = success_count + failure_count
 ORDER BY updated_at
-LIMIT sqlc.arg(page_limit);
-
--- name: ListJobsNeedingSubmitResume :many
-SELECT j.*
-FROM lookup_jobs j
-WHERE j.status IN ('queued', 'processing')
-  AND j.item_count > 0
-  AND EXISTS (
-      SELECT 1 FROM lookup_items i
-      WHERE i.job_id = j.id AND i.status = 'queued'
-  )
-  AND j.updated_at <= sqlc.arg(older_than)
-ORDER BY j.updated_at
 LIMIT sqlc.arg(page_limit);
 
 -- name: ListEmptyCsvLookupShells :many
@@ -683,13 +649,6 @@ FROM lookup_items
 WHERE client_id = sqlc.arg(client_id)
   AND (sqlc.narg(filter_status)::lookup_item_status IS NULL OR status = sqlc.narg(filter_status))
   AND (sqlc.narg(filter_check_type)::lookup_check_type IS NULL OR check_type = sqlc.narg(filter_check_type));
-
--- name: CountLookupItemsSinceByStatusForClient :many
-SELECT status, count(*)::bigint AS n
-FROM lookup_items
-WHERE client_id = sqlc.arg(client_id)
-  AND created_at >= sqlc.arg(since)
-GROUP BY status;
 
 -- name: CountLookupItemsSinceByTypeForClient :many
 SELECT check_type, count(*)::bigint AS n

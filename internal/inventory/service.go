@@ -282,23 +282,6 @@ func (s *Service) Unassign(ctx context.Context, numberID uuid.UUID) (sqlcdb.GetD
 	return view, asg.ClientID, nil
 }
 
-func (s *Service) UnassignAllForClient(ctx context.Context, clientID uuid.UUID) (int, error) {
-	tx, err := s.store.Pool.Begin(ctx)
-	if err != nil {
-		return 0, err
-	}
-	defer tx.Rollback(ctx)
-	q := s.store.Queries.WithTx(tx)
-	n, err := UnassignAll(ctx, q, clientID)
-	if err != nil {
-		return 0, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return 0, err
-	}
-	return n, nil
-}
-
 func UnassignAll(ctx context.Context, q *sqlcdb.Queries, clientID uuid.UUID) (int, error) {
 	rows, err := q.ListOpenAssignmentsByClient(ctx, clientID)
 	if err != nil {

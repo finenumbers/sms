@@ -3,9 +3,6 @@ INSERT INTO sms_campaigns (client_id, from_msisdn, text, created_by)
 VALUES ($1, $2, $3, $4)
 RETURNING *;
 
--- name: GetCampaignByID :one
-SELECT * FROM sms_campaigns WHERE id = sqlc.arg(id);
-
 -- name: GetCampaignForClient :one
 SELECT * FROM sms_campaigns
 WHERE id = sqlc.arg(id) AND client_id = sqlc.arg(client_id)::uuid;

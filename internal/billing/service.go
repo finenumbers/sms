@@ -49,13 +49,6 @@ func HoldKey(messageID uuid.UUID) string   { return "hold:sms:" + messageID.Stri
 func DebitKey(messageID uuid.UUID) string  { return "debit:sms:" + messageID.String() }
 func ReleaseKey(messageID uuid.UUID) string { return "release:sms:" + messageID.String() }
 
-func (s *Service) EnsureWallet(ctx context.Context, q *sqlcdb.Queries, clientID uuid.UUID) (sqlcdb.Wallet, error) {
-	if q == nil {
-		q = s.queries()
-	}
-	return q.InsertWallet(ctx, sqlcdb.InsertWalletParams{ClientID: clientID, Currency: "RUB"})
-}
-
 func (s *Service) ReserveForMessage(ctx context.Context, q *sqlcdb.Queries, msg sqlcdb.SmsMessage) error {
 	if q == nil {
 		return errors.New("reserve requires transaction queries")

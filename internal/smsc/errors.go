@@ -83,22 +83,6 @@ func MapErrorCode(code any) mappedCode {
 	}
 }
 
-func isErrorBody(body any) bool {
-	obj, ok := asObject(body)
-	if !ok {
-		return false
-	}
-	if _, has := obj["error_code"]; has {
-		return true
-	}
-	if _, hasErr := obj["error"]; !hasErr {
-		return false
-	}
-	_, hasStatus := obj["status"]
-	_, hasID := obj["id"]
-	return !(hasStatus && hasID)
-}
-
 func errorFromBody(body any, correlationID string, httpStatus int) *Error {
 	obj, _ := asObject(body)
 	code := obj["error_code"]

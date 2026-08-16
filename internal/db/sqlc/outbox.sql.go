@@ -151,52 +151,6 @@ func (q *Queries) GetLatestSendAttempt(ctx context.Context, sendJobID uuid.UUID)
 	return i, err
 }
 
-const getSendJobByID = `-- name: GetSendJobByID :one
-SELECT id, sms_message_id, client_id, status, attempt, available_at, locked_at, locked_by, last_error, created_at, updated_at FROM send_jobs WHERE id = $1
-`
-
-func (q *Queries) GetSendJobByID(ctx context.Context, id uuid.UUID) (SendJob, error) {
-	row := q.db.QueryRow(ctx, getSendJobByID, id)
-	var i SendJob
-	err := row.Scan(
-		&i.ID,
-		&i.SmsMessageID,
-		&i.ClientID,
-		&i.Status,
-		&i.Attempt,
-		&i.AvailableAt,
-		&i.LockedAt,
-		&i.LockedBy,
-		&i.LastError,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getSendJobByMessageID = `-- name: GetSendJobByMessageID :one
-SELECT id, sms_message_id, client_id, status, attempt, available_at, locked_at, locked_by, last_error, created_at, updated_at FROM send_jobs WHERE sms_message_id = $1
-`
-
-func (q *Queries) GetSendJobByMessageID(ctx context.Context, smsMessageID uuid.UUID) (SendJob, error) {
-	row := q.db.QueryRow(ctx, getSendJobByMessageID, smsMessageID)
-	var i SendJob
-	err := row.Scan(
-		&i.ID,
-		&i.SmsMessageID,
-		&i.ClientID,
-		&i.Status,
-		&i.Attempt,
-		&i.AvailableAt,
-		&i.LockedAt,
-		&i.LockedBy,
-		&i.LastError,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const insertSendAttempt = `-- name: InsertSendAttempt :exec
 INSERT INTO provider_send_attempts (
     send_job_id, attempt, request_meta, http_status, response_body, latency_ms, error_kind

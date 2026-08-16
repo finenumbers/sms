@@ -92,11 +92,6 @@ INSERT INTO webhook_deliveries (
 )
 RETURNING *;
 
--- name: GetWebhookDelivery :one
-SELECT *
-FROM webhook_deliveries
-WHERE id = sqlc.arg(id);
-
 -- name: ListWebhookDeliveriesForClient :many
 SELECT *
 FROM webhook_deliveries

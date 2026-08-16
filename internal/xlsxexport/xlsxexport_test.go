@@ -94,3 +94,65 @@ func TestBuildHeaderFilterWidthBorder(t *testing.T) {
 		t.Fatalf("col B width %v, want longest error text", w)
 	}
 }
+
+func TestBuildStyledRowFillAndFont(t *testing.T) {
+	raw, err := BuildStyled("items", []string{"Номер"}, [][]string{
+		{"+79001111111"},
+		{"+79002222222"},
+	}, []RowStyle{
+		{},
+		{FillRGB: "FEF2F2", FontRGB: "991B1B"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+
+	plain := mustStyle(t, f, "A2")
+	if fillRGB(plain) != "" {
+		t.Fatalf("plain fill %#v", plain.Fill)
+	}
+
+	hi := mustStyle(t, f, "A3")
+	if fillRGB(hi) != "FEF2F2" {
+		t.Fatalf("highlight fill %#v", hi.Fill)
+	}
+	if hi.Font == nil || rgb(hi.Font.Color) != "991B1B" {
+		t.Fatalf("highlight font %#v", hi.Font)
+	}
+	if len(hi.Border) < 4 {
+		t.Fatalf("highlight border %#v", hi.Border)
+	}
+}
+
+func mustStyle(t *testing.T, f *excelize.File, cell string) *excelize.Style {
+	t.Helper()
+	id, err := f.GetCellStyle("items", cell)
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := f.GetStyle(id)
+	if err != nil || style == nil {
+		t.Fatalf("style %s %#v %v", cell, style, err)
+	}
+	return style
+}
+
+func fillRGB(style *excelize.Style) string {
+	if len(style.Fill.Color) == 0 {
+		return ""
+	}
+	return rgb(style.Fill.Color[0])
+}
+
+func rgb(s string) string {
+	s = strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(s)), "#")
+	if len(s) == 8 {
+		s = s[2:]
+	}
+	return s
+}

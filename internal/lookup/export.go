@@ -96,10 +96,23 @@ func ExportRow(checkType sqlcdb.LookupCheckType, item sqlcdb.LookupItem) []strin
 func BuildXLSX(checkType sqlcdb.LookupCheckType, items []sqlcdb.LookupItem) ([]byte, error) {
 	headers := ExportHeaders(checkType)
 	rows := make([][]string, len(items))
+	styles := make([]xlsxexport.RowStyle, len(items))
 	for i, item := range items {
 		rows[i] = ExportRow(checkType, item)
+		if checkType == sqlcdb.LookupCheckTypeHlr && exportHLRNegativeRow(item) {
+			styles[i] = xlsxexport.RowStyle{FillRGB: "FEF2F2", FontRGB: "991B1B"}
+		}
 	}
-	return xlsxexport.Build("items", headers, rows)
+	return xlsxexport.BuildStyled("items", headers, rows, styles)
+}
+
+// exportHLRNegativeRow matches the cabinet/admin table: bg-red-50 text-red-800.
+func exportHLRNegativeRow(item sqlcdb.LookupItem) bool {
+	switch deref(item.ResultStatus) {
+	case "unreachable", "error":
+		return true
+	}
+	return item.Status == sqlcdb.LookupItemStatusFailed
 }
 
 func exportText(s string) string {

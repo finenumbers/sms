@@ -1,12 +1,15 @@
 package lookup
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
 	sqlcdb "finenumbers/sms/internal/db/sqlc"
+
+	"github.com/xuri/excelize/v2"
 )
 
 func TestParseCSVPhones(t *testing.T) {
@@ -95,6 +98,96 @@ func TestExportHeadersAndRow(t *testing.T) {
 	if err != nil || len(raw) < 100 {
 		t.Fatalf("xlsx %v %d", err, len(raw))
 	}
+}
+
+func TestBuildXLSXHighlightsHLRNegativeRows(t *testing.T) {
+	reachable := true
+	ok := sqlcdb.LookupItem{
+		PhoneE164:    "+79001111111",
+		Status:       sqlcdb.LookupItemStatusCompleted,
+		ResultStatus: strPtr("reachable"),
+		IsReachable:  &reachable,
+	}
+	down := sqlcdb.LookupItem{
+		PhoneE164:    "+79002222222",
+		Status:       sqlcdb.LookupItemStatusCompleted,
+		ResultStatus: strPtr("unreachable"),
+	}
+	failedPing := sqlcdb.LookupItem{
+		PhoneE164: "+79003333333",
+		Status:    sqlcdb.LookupItemStatusFailed,
+	}
+
+	raw, err := BuildXLSX(sqlcdb.LookupCheckTypeHlr, []sqlcdb.LookupItem{ok, down})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = f.Close() }()
+	if got := xlsxFillRGB(t, f, "A2"); got != "" {
+		t.Fatalf("reachable fill %q", got)
+	}
+	if got := xlsxFillRGB(t, f, "A3"); got != "FEF2F2" {
+		t.Fatalf("unreachable fill %q", got)
+	}
+	if got := xlsxFontRGB(t, f, "A3"); got != "991B1B" {
+		t.Fatalf("unreachable font %q", got)
+	}
+
+	pingRaw, err := BuildXLSX(sqlcdb.LookupCheckTypePing, []sqlcdb.LookupItem{failedPing})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pf, err := excelize.OpenReader(bytes.NewReader(pingRaw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pf.Close() }()
+	if got := xlsxFillRGB(t, pf, "A2"); got != "" {
+		t.Fatalf("ping failed must not highlight, fill %q", got)
+	}
+}
+
+func xlsxFillRGB(t *testing.T, f *excelize.File, cell string) string {
+	t.Helper()
+	style := xlsxCellStyle(t, f, cell)
+	if len(style.Fill.Color) == 0 {
+		return ""
+	}
+	return xlsxRGB(style.Fill.Color[0])
+}
+
+func xlsxFontRGB(t *testing.T, f *excelize.File, cell string) string {
+	t.Helper()
+	style := xlsxCellStyle(t, f, cell)
+	if style.Font == nil {
+		return ""
+	}
+	return xlsxRGB(style.Font.Color)
+}
+
+func xlsxCellStyle(t *testing.T, f *excelize.File, cell string) *excelize.Style {
+	t.Helper()
+	id, err := f.GetCellStyle("items", cell)
+	if err != nil {
+		t.Fatal(err)
+	}
+	style, err := f.GetStyle(id)
+	if err != nil || style == nil {
+		t.Fatalf("style %s %#v %v", cell, style, err)
+	}
+	return style
+}
+
+func xlsxRGB(s string) string {
+	s = strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(s, "#")))
+	if len(s) == 8 {
+		s = s[2:]
+	}
+	return s
 }
 
 func TestPreviewJSONStats(t *testing.T) {

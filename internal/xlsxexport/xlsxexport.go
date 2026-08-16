@@ -3,6 +3,7 @@ package xlsxexport
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/xuri/excelize/v2"
@@ -15,9 +16,20 @@ var thinBorder = []excelize.Border{
 	{Type: "right", Color: "000000", Style: 1},
 }
 
+// RowStyle colors a data row (index 0 is the first row under the header).
+// Empty FillRGB and FontRGB keep the default cell style.
+type RowStyle struct {
+	FillRGB string
+	FontRGB string
+}
+
 // Build writes a single-sheet XLSX: bold centered header, AutoFilter, column
 // widths from the longest cell, and borders on the used range.
 func Build(sheetName string, headers []string, rows [][]string) ([]byte, error) {
+	return BuildStyled(sheetName, headers, rows, nil)
+}
+
+func BuildStyled(sheetName string, headers []string, rows [][]string, rowStyles []RowStyle) ([]byte, error) {
 	if sheetName == "" {
 		sheetName = "Sheet1"
 	}
@@ -51,6 +63,7 @@ func Build(sheetName string, headers []string, rows [][]string) ([]byte, error) 
 	if err != nil {
 		return nil, err
 	}
+	styleIDs := map[string]int{"": cellStyle}
 
 	widths := make([]int, cols)
 	for i := 0; i < cols; i++ {
@@ -71,6 +84,14 @@ func Build(sheetName string, headers []string, rows [][]string) ([]byte, error) 
 		}
 	}
 	for r, row := range rows {
+		styleID := cellStyle
+		if r < len(rowStyles) {
+			id, err := rowStyleID(f, styleIDs, rowStyles[r])
+			if err != nil {
+				return nil, err
+			}
+			styleID = id
+		}
 		for c := 0; c < cols; c++ {
 			val := ""
 			if c < len(row) {
@@ -86,7 +107,7 @@ func Build(sheetName string, headers []string, rows [][]string) ([]byte, error) 
 			if err := f.SetCellValue(sheetName, cell, val); err != nil {
 				return nil, err
 			}
-			if err := f.SetCellStyle(sheetName, cell, cell, cellStyle); err != nil {
+			if err := f.SetCellStyle(sheetName, cell, cell, styleID); err != nil {
 				return nil, err
 			}
 		}
@@ -117,6 +138,28 @@ func Build(sheetName string, headers []string, rows [][]string) ([]byte, error) 
 		}
 	}
 	return writeFile(f)
+}
+
+func rowStyleID(f *excelize.File, cache map[string]int, style RowStyle) (int, error) {
+	fill := strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(style.FillRGB)), "#")
+	font := strings.TrimPrefix(strings.ToUpper(strings.TrimSpace(style.FontRGB)), "#")
+	key := fill + "/" + font
+	if id, ok := cache[key]; ok {
+		return id, nil
+	}
+	st := excelize.Style{Border: thinBorder}
+	if fill != "" {
+		st.Fill = excelize.Fill{Type: "pattern", Pattern: 1, Color: []string{fill}}
+	}
+	if font != "" {
+		st.Font = &excelize.Font{Color: font}
+	}
+	id, err := f.NewStyle(&st)
+	if err != nil {
+		return 0, err
+	}
+	cache[key] = id
+	return id, nil
 }
 
 func writeFile(f *excelize.File) ([]byte, error) {

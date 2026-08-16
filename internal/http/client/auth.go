@@ -99,7 +99,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		UserAgent:    ua,
 		Metadata:     map[string]any{"email": out.User.Email},
 	})
-	httpx.WriteJSON(w, http.StatusOK, clientMe(out.User.ID.String(), out.User.Email, string(out.User.Role), out.Client.ID.String(), out.Client.Name))
+	httpx.WriteJSON(w, http.StatusOK, clientMe(out.User.ID.String(), out.User.Email, out.User.Name, string(out.User.Role), out.Client.ID.String(), out.Client.Name))
 }
 
 func (h *Handlers) Logout(w http.ResponseWriter, r *http.Request) {
@@ -137,7 +137,7 @@ func (h *Handlers) Me(w http.ResponseWriter, r *http.Request) {
 	if p.ClientID != nil {
 		cid = p.ClientID.String()
 	}
-	httpx.WriteJSON(w, http.StatusOK, clientMe(uid, p.Email, p.Role, cid, p.Name))
+	httpx.WriteJSON(w, http.StatusOK, clientMe(uid, p.Email, p.UserName, p.Role, cid, p.Name))
 }
 
 func (h *Handlers) allowLogin(w http.ResponseWriter, r *http.Request, email string) bool {
@@ -166,10 +166,11 @@ func (h *Handlers) allowLogin(w http.ResponseWriter, r *http.Request, email stri
 	return true
 }
 
-func clientMe(id, email, role, clientID, clientName string) map[string]any {
+func clientMe(id, email, name, role, clientID, clientName string) map[string]any {
 	return map[string]any{
 		"id":          id,
 		"email":       email,
+		"name":        name,
 		"role":        role,
 		"client_id":   clientID,
 		"client_name": clientName,

@@ -153,6 +153,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/clients/{clientID}/owner/password", adminH.ResetOwnerPassword)
 			r.Post("/clients/{clientID}/users", adminH.CreateClientUser)
 			r.Post("/clients/{clientID}/users/{userID}/password", adminH.ResetClientUserPassword)
+			r.Post("/clients/{clientID}/users/{userID}/name", adminH.UpdateClientUserName)
 			r.Post("/clients/{clientID}/users/{userID}/disable", adminH.DisableClientUser)
 			r.Post("/clients/{clientID}/users/{userID}/enable", adminH.EnableClientUser)
 			r.Get("/numbers", adminH.ListNumbers)

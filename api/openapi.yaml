@@ -274,6 +274,30 @@ paths:
           description: Owner created
         "409":
           description: Email taken or user limit
+  /admin/v1/clients/{clientID}/users/{userID}/name:
+    post:
+      tags: [admin]
+      operationId: adminUpdateClientUserName
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CSRF"
+        - $ref: "#/components/parameters/ClientID"
+        - $ref: "#/components/parameters/UserID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        "200":
+          description: Name updated
+        "404":
+          description: User not on this client
   /admin/v1/clients/{clientID}/users/{userID}/password:
     post:
       tags: [admin]
@@ -736,7 +760,7 @@ paths:
       security: [{clientCookie: []}]
       responses:
         "200":
-          description: Current client user
+          description: Current client user (id, email, name, role, client_id, client_name)
   /client/v1/messages:
     post:
       tags: [client]
@@ -2011,9 +2035,11 @@ components:
           type: string
     CreateClientRequest:
       type: object
-      required: [name, owner_email, owner_password]
+      required: [name, owner_name, owner_email, owner_password]
       properties:
         name:
+          type: string
+        owner_name:
           type: string
         owner_email:
           type: string

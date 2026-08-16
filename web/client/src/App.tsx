@@ -70,7 +70,7 @@ function Layout({ children }: { children: ReactNode }) {
         me.data ? (
           <div>
             <div className="font-bold text-black">{me.data.client_name}</div>
-            <div className="font-normal text-black">{me.data.email}</div>
+            <div className="font-normal text-black">{me.data.name}</div>
           </div>
         ) : undefined
       }

@@ -45,6 +45,8 @@ export function ClientDetailPage() {
   const [newUserPassword, setNewUserPassword] = useState("");
   const [resetUserID, setResetUserID] = useState("");
   const [resetPassword, setResetPassword] = useState("");
+  const [renameUserID, setRenameUserID] = useState("");
+  const [renameName, setRenameName] = useState("");
   const allScopes = ["sms:send", "sms:read", "campaigns:write", "lookup:write", "lookup:read"] as const;
 
   const patch = useMutation({
@@ -79,6 +81,15 @@ export function ClientDetailPage() {
     onSuccess: () => {
       setResetUserID("");
       setResetPassword("");
+    },
+  });
+  const renameUser = useMutation({
+    mutationFn: ({ userID, name }: { userID: string; name: string }) =>
+      api.post(`/clients/${id}/users/${userID}/name`, { name }),
+    onSuccess: () => {
+      setRenameUserID("");
+      setRenameName("");
+      void qc.invalidateQueries({ queryKey: ["client", id] });
     },
   });
   const disableUser = useMutation({
@@ -239,9 +250,9 @@ export function ClientDetailPage() {
               <li key={u.id} className="rounded-lg border border-zinc-200 p-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <div className="font-medium">{u.email}</div>
+                    <div className="font-medium">{(u.name && u.name.trim()) || "—"}</div>
                     <div className="text-sm text-zinc-500">
-                      {(u.name && u.name.trim()) || "—"} · {u.role.toUpperCase()}
+                      {u.email} · {u.role.toUpperCase()}
                     </div>
                   </div>
                   <Badge tone={u.status === "active" ? "green" : "zinc"}>{u.status.toUpperCase()}</Badge>
@@ -268,7 +279,37 @@ export function ClientDetailPage() {
                   <Button variant="ghost" type="button" onClick={() => setResetUserID(resetUserID === u.id ? "" : u.id)}>
                     Сбросить пароль
                   </Button>
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => {
+                      if (renameUserID === u.id) {
+                        setRenameUserID("");
+                        setRenameName("");
+                        return;
+                      }
+                      setRenameUserID(u.id);
+                      setRenameName(u.name ?? "");
+                    }}
+                  >
+                    Изменить ФИО
+                  </Button>
                 </div>
+                {renameUserID === u.id ? (
+                  <div className="mt-2">
+                    <Field label="ФИО">
+                      <Input value={renameName} onChange={(e) => setRenameName(e.target.value)} />
+                    </Field>
+                    {renameUser.isError ? <ErrorBox error={renameUser.error} /> : null}
+                    <Button
+                      type="button"
+                      disabled={renameName.trim() === "" || renameUser.isPending}
+                      onClick={() => renameUser.mutate({ userID: u.id, name: renameName })}
+                    >
+                      Сохранить ФИО
+                    </Button>
+                  </div>
+                ) : null}
                 {resetUserID === u.id ? (
                   <div className="mt-2">
                     <Field label="Новый пароль (мин. 10)">

@@ -173,6 +173,35 @@ func (q *Queries) ListClientUsersByClientID(ctx context.Context, clientID uuid.U
 	return items, nil
 }
 
+const updateClientUserName = `-- name: UpdateClientUserName :one
+UPDATE client_users
+SET name = $1, updated_at = now()
+WHERE id = $2
+RETURNING id, client_id, email, password_hash, role, status, created_at, updated_at, name
+`
+
+type UpdateClientUserNameParams struct {
+	Name string    `json:"name"`
+	ID   uuid.UUID `json:"id"`
+}
+
+func (q *Queries) UpdateClientUserName(ctx context.Context, arg UpdateClientUserNameParams) (ClientUser, error) {
+	row := q.db.QueryRow(ctx, updateClientUserName, arg.Name, arg.ID)
+	var i ClientUser
+	err := row.Scan(
+		&i.ID,
+		&i.ClientID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+	)
+	return i, err
+}
+
 const updateClientUserPassword = `-- name: UpdateClientUserPassword :exec
 UPDATE client_users
 SET password_hash = $1, updated_at = now()

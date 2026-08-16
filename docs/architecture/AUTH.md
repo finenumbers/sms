@@ -5,7 +5,7 @@
 ## Principals
 
 - **AdminUser** — Argon2id, роль `admin`. Первый пользователь: seed из `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD`, если таблица пуста. Сброс пароля клиента — только админ (нет public reset в v1)
-- **ClientUser** — роль `owner` (минимум один при создании Client; админ может добавить ещё owner с тем же доступом в ЛК). Тенант = `client_id` в сессии. Поле `name` (ФИО). Сброс пароля и отключение — только админ; сессии отзываются у этого пользователя.
+- **ClientUser** — роль `owner` (минимум один при создании Client; админ может добавить ещё owner с тем же доступом в ЛК). Тенант = `client_id` в сессии. Поле `name` (ФИО) обязательно и у первого owner. Сброс пароля и отключение — только админ; сессии отзываются у этого пользователя. Смена ФИО сессии не отзывает.
 - **Client API** — `Authorization: Bearer fnk_live_{prefix}_{secret}`. Ключи в v1 выдаёт Admin. В ЛК — read-only prefix / status / last_used. Hash: SHA-256(pepper ∥ secret). Scopes: `sms:send`, `sms:read`, `campaigns:write`. `allowed_cidrs` пустой = любой IP. Pepper = `API_KEY_PEPPER` или `APP_MASTER_KEY`.
 
 Публичный `/v1` на `api.{domain}`: CORS allowlist (`CORS_ALLOW_ORIGINS`, пустой = без браузерного CORS). Опциональный заголовок `Idempotency-Key` на `POST /v1/messages` (повтор с тем же телом отдаёт сохранённый 202; другое тело — 409). Rate limit per-credential: 10 rps / burst 20.

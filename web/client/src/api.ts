@@ -5,6 +5,7 @@ export const api = createApi("/client/v1");
 export type ClientMe = {
   id: string;
   email: string;
+  name: string;
   role: string;
   client_id: string;
   client_name: string;

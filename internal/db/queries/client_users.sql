@@ -34,6 +34,12 @@ UPDATE client_users
 SET password_hash = sqlc.arg(password_hash), updated_at = now()
 WHERE id = sqlc.arg(id);
 
+-- name: UpdateClientUserName :one
+UPDATE client_users
+SET name = sqlc.arg(name), updated_at = now()
+WHERE id = sqlc.arg(id)
+RETURNING *;
+
 -- name: UpdateClientUserStatus :one
 UPDATE client_users
 SET status = sqlc.arg(status), updated_at = now()

@@ -131,6 +131,33 @@ func (s *Service) ResetClientUserPassword(ctx context.Context, clientID, userID 
 	return tx.Commit(ctx)
 }
 
+func (s *Service) UpdateClientUserName(ctx context.Context, clientID, userID uuid.UUID, name string) (sqlcdb.ClientUser, error) {
+	name, err := validateUserName(name)
+	if err != nil {
+		return sqlcdb.ClientUser{}, err
+	}
+	tx, err := s.store.Pool.Begin(ctx)
+	if err != nil {
+		return sqlcdb.ClientUser{}, err
+	}
+	defer tx.Rollback(ctx)
+	q := s.store.Queries.WithTx(tx)
+	if _, err := loadClientUserForClient(ctx, q, clientID, userID); err != nil {
+		return sqlcdb.ClientUser{}, err
+	}
+	out, err := q.UpdateClientUserName(ctx, sqlcdb.UpdateClientUserNameParams{Name: name, ID: userID})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return sqlcdb.ClientUser{}, ErrNotFound
+		}
+		return sqlcdb.ClientUser{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return sqlcdb.ClientUser{}, err
+	}
+	return out, nil
+}
+
 func (s *Service) DisableClientUser(ctx context.Context, clientID, userID uuid.UUID) (sqlcdb.ClientUser, error) {
 	tx, err := s.store.Pool.Begin(ctx)
 	if err != nil {

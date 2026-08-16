@@ -139,6 +139,7 @@ type Principal struct {
 	Scopes       []string
 	Email        string
 	Name         string
+	UserName     string
 	Role         string
 	LastSeenAt   time.Time
 }
@@ -220,6 +221,7 @@ func (s *Service) Resolve(ctx context.Context, sessionID uuid.UUID, want sqlcdb.
 		}
 		p.Email = u.Email
 		p.Name = cl.Name
+		p.UserName = u.Name
 		p.Role = string(u.Role)
 		p.ClientID = &u.ClientID
 	default:
@@ -237,6 +239,7 @@ func (s *Service) Resolve(ctx context.Context, sessionID uuid.UUID, want sqlcdb.
 
 type CreateClientInput struct {
 	Name          string
+	OwnerName     string
 	OwnerEmail    string
 	OwnerPassword string
 	CreatedBy     uuid.UUID
@@ -252,6 +255,10 @@ func (s *Service) CreateClient(ctx context.Context, in CreateClientInput) (Creat
 	email := normalizeEmail(in.OwnerEmail)
 	if name == "" {
 		return CreatedClient{}, fmt.Errorf("%w: name required", ErrValidation)
+	}
+	ownerName, err := validateUserName(in.OwnerName)
+	if err != nil {
+		return CreatedClient{}, err
 	}
 	if err := validateEmail(email); err != nil {
 		return CreatedClient{}, err
@@ -289,7 +296,7 @@ func (s *Service) CreateClient(ctx context.Context, in CreateClientInput) (Creat
 		ClientID:     cl.ID,
 		Email:        email,
 		PasswordHash: hash,
-		Name:         "",
+		Name:         ownerName,
 	})
 	if err != nil {
 		return CreatedClient{}, err

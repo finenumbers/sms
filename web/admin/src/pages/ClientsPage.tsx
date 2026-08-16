@@ -14,14 +14,16 @@ export function ClientsPage() {
   });
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
   const create = useMutation({
     mutationFn: () =>
-      api.post("/clients", { name, owner_email: ownerEmail, owner_password: ownerPassword }),
+      api.post("/clients", { name, owner_name: ownerName, owner_email: ownerEmail, owner_password: ownerPassword }),
     onSuccess: () => {
       setOpen(false);
       setName("");
+      setOwnerName("");
       setOwnerEmail("");
       setOwnerPassword("");
       setOffset(0);
@@ -67,6 +69,9 @@ export function ClientsPage() {
           >
             <Field label="Название">
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
+            </Field>
+            <Field label="ФИО владельца">
+              <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
             </Field>
             <Field label="Эл. почта владельца">
               <Input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />

@@ -21,6 +21,7 @@ import (
 
 type createClientRequest struct {
 	Name          string `json:"name"`
+	OwnerName     string `json:"owner_name"`
 	OwnerEmail    string `json:"owner_email"`
 	OwnerPassword string `json:"owner_password"`
 }
@@ -46,6 +47,7 @@ func (h *Handlers) CreateClient(w http.ResponseWriter, r *http.Request) {
 	}
 	out, err := h.Ident.CreateClient(r.Context(), identity.CreateClientInput{
 		Name:          req.Name,
+		OwnerName:     req.OwnerName,
 		OwnerEmail:    req.OwnerEmail,
 		OwnerPassword: req.OwnerPassword,
 		CreatedBy:     *p.AdminUserID,
@@ -63,13 +65,14 @@ func (h *Handlers) CreateClient(w http.ResponseWriter, r *http.Request) {
 		ResourceID:   &out.Client.ID,
 		IP:           httpx.ClientIP(r),
 		UserAgent:    httpx.UserAgent(r),
-		Metadata:     map[string]any{"owner_email": out.Owner.Email},
+		Metadata:     map[string]any{"owner_email": out.Owner.Email, "owner_name": out.Owner.Name},
 	})
 	httpx.WriteJSON(w, http.StatusCreated, map[string]any{
 		"id":          out.Client.ID,
 		"name":        out.Client.Name,
 		"status":      out.Client.Status,
 		"owner_id":    out.Owner.ID,
+		"owner_name":  out.Owner.Name,
 		"owner_email": out.Owner.Email,
 		"owner_role":  out.Owner.Role,
 		"created_at":  out.Client.CreatedAt.UTC().Format(time.RFC3339),
@@ -346,6 +349,47 @@ func (h *Handlers) ResetClientUserPassword(w http.ResponseWriter, r *http.Reques
 		UserAgent:    httpx.UserAgent(r),
 	})
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type updateClientUserNameRequest struct {
+	Name string `json:"name"`
+}
+
+func (h *Handlers) UpdateClientUserName(w http.ResponseWriter, r *http.Request) {
+	p, ok := requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathUUID(w, r, "clientID")
+	if !ok {
+		return
+	}
+	userID, ok := pathUUID(w, r, "userID")
+	if !ok {
+		return
+	}
+	var req updateClientUserNameRequest
+	if err := httpx.DecodeJSON(r, &req); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid request body")
+		return
+	}
+	user, err := h.Ident.UpdateClientUserName(r.Context(), id, userID, req.Name)
+	if err != nil {
+		writeClientErr(w, h, "update client user name", err)
+		return
+	}
+	h.Audit.Write(r.Context(), audit.Event{
+		ActorType:    sqlcdb.ActorTypeAdmin,
+		ActorID:      p.AdminUserID,
+		ClientID:     &id,
+		Action:       "client.user.name_update",
+		ResourceType: "client_user",
+		ResourceID:   &userID,
+		IP:           httpx.ClientIP(r),
+		UserAgent:    httpx.UserAgent(r),
+		Metadata:     map[string]any{"name": user.Name},
+	})
+	httpx.WriteJSON(w, http.StatusOK, clientUserJSON(user))
 }
 
 func (h *Handlers) DisableClientUser(w http.ResponseWriter, r *http.Request) {

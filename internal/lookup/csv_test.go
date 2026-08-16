@@ -57,15 +57,16 @@ func TestWriteErrorLookupDisabled(t *testing.T) {
 }
 
 func TestExportHeadersAndRow(t *testing.T) {
-	if len(ExportHeaders(sqlcdb.LookupCheckTypeHlr)) != 16 {
-		t.Fatalf("hlr headers %d", len(ExportHeaders(sqlcdb.LookupCheckTypeHlr)))
-	}
 	headers := ExportHeaders(sqlcdb.LookupCheckTypeHlr)
-	if headers[7] != "MCC" || headers[8] != "MNC" {
-		t.Fatalf("mcc/mnc headers %#v", headers[7:9])
+	if len(headers) != 14 {
+		t.Fatalf("hlr headers %d", len(headers))
 	}
-	if len(ExportHeaders(sqlcdb.LookupCheckTypePing)) != 5 {
-		t.Fatalf("ping headers %d", len(ExportHeaders(sqlcdb.LookupCheckTypePing)))
+	if headers[0] != "Номер" || headers[6] != "MCC" || headers[7] != "MNC" || headers[13] != "Ошибка" {
+		t.Fatalf("hlr headers %#v", headers)
+	}
+	pingHeaders := ExportHeaders(sqlcdb.LookupCheckTypePing)
+	if len(pingHeaders) != 4 || pingHeaders[0] != "Номер" || pingHeaders[3] != "Ошибка" {
+		t.Fatalf("ping headers %#v", pingHeaders)
 	}
 	reachable := true
 	item := sqlcdb.LookupItem{
@@ -75,7 +76,7 @@ func TestExportHeadersAndRow(t *testing.T) {
 		IsReachable:  &reachable,
 	}
 	row := ExportRow(sqlcdb.LookupCheckTypePing, item)
-	if row[0] != "+79001234567" || row[2] != "в сети" || row[3] != "да" {
+	if len(row) != 4 || row[0] != "+79001234567" || row[1] != "готово" || row[2] != "в сети" || row[3] != "—" {
 		t.Fatalf("row %#v", row)
 	}
 	mcc, mnc := "250", "01"
@@ -83,8 +84,12 @@ func TestExportHeadersAndRow(t *testing.T) {
 	hlrItem.Mcc = &mcc
 	hlrItem.Mnc = &mnc
 	hlrRow := ExportRow(sqlcdb.LookupCheckTypeHlr, hlrItem)
-	if len(hlrRow) != 16 || hlrRow[7] != "250" || hlrRow[8] != "01" {
+	if len(hlrRow) != 14 || hlrRow[6] != "250" || hlrRow[7] != "01" || hlrRow[10] != "—" {
 		t.Fatalf("hlr row %#v", hlrRow)
+	}
+	noResult := sqlcdb.LookupItem{PhoneE164: "+79000000000", IsReachable: &reachable}
+	if ExportRow(sqlcdb.LookupCheckTypePing, noResult)[2] != "да" {
+		t.Fatalf("result fallback %#v", ExportRow(sqlcdb.LookupCheckTypePing, noResult))
 	}
 	raw, err := BuildXLSX(sqlcdb.LookupCheckTypePing, []sqlcdb.LookupItem{item})
 	if err != nil || len(raw) < 100 {

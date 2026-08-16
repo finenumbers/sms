@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import {
   Alert,
   Badge,
@@ -68,14 +68,9 @@ export function LookupDetailPage() {
       <PageHeader
         title={`${typeLabel[j.type] ?? j.type} · ${jobStatusLabel[j.status] ?? j.status}`}
         actions={
-          <div className="flex gap-2">
-            <Link className="text-sm text-blue-700 hover:underline" to="/lookups">
-              К списку
-            </Link>
-            <Button type="button" variant="secondary" disabled={exp.isPending || j.item_count === 0} onClick={() => exp.mutate()}>
-              Скачать XLSX
-            </Button>
-          </div>
+          <Button type="button" variant="secondary" disabled={exp.isPending || j.item_count === 0} onClick={() => exp.mutate()}>
+            Скачать XLSX
+          </Button>
         }
       />
       <div className="mb-4 grid gap-3 md:grid-cols-3">

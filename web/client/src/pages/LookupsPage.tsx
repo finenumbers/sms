@@ -77,12 +77,11 @@ export function LookupsPage() {
             <Th fit>Тип</Th>
             <Th fit>Источник</Th>
             <Th fit>Статус</Th>
-            <Th fit>Всего</Th>
+            <Th fit>Номера</Th>
             <Th fit>В сети</Th>
             <Th fit>Не в сети</Th>
             <Th fit>Ошибки</Th>
             <Th fit>Списано</Th>
-            <Th fit>Файл</Th>
             <Th fit>Ошибка</Th>
           </tr>
         </thead>
@@ -108,7 +107,6 @@ export function LookupsPage() {
                 {job.failure_count}
               </Td>
               <Td fit>{formatMoney(job.actual_cost || job.estimated_cost, job.currency)}</Td>
-              <Td fit>{job.original_filename || "—"}</Td>
               <Td fit>{job.error_message || "—"}</Td>
             </tr>
           ))}

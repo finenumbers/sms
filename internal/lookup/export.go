@@ -1,13 +1,10 @@
 package lookup
 
 import (
-	"archive/zip"
-	"bytes"
-	"encoding/xml"
-	"fmt"
 	"strings"
 
 	sqlcdb "finenumbers/sms/internal/db/sqlc"
+	"finenumbers/sms/internal/xlsxexport"
 )
 
 const (
@@ -16,21 +13,21 @@ const (
 )
 
 var exportHeadersHLR = []string{
-	"Телефон", "Статус", "Результат", "Доступен", "Оператор", "Страна", "Регион",
+	"Номер", "Статус", "Результат", "Оператор", "Страна", "Регион",
 	"MCC", "MNC", "IMSI", "MSC", "Роуминг", "Страна роуминга", "Оператор роуминга",
-	"Ошибки", "Подробности",
+	"Ошибка",
 }
 
 var exportHeadersPing = []string{
-	"Телефон", "Статус", "Результат", "Доступен", "Подробности",
+	"Номер", "Статус", "Результат", "Ошибка",
 }
 
 var exportItemStatusRU = map[string]string{
 	"queued":    "в очереди",
-	"reserved":  "зарезервирован",
-	"sent":      "отправлен провайдеру",
-	"pending":   "ждём ответ",
-	"completed": "готов",
+	"reserved":  "резерв",
+	"sent":      "отправлен",
+	"pending":   "ожидание",
+	"completed": "готово",
 	"failed":    "ошибка",
 	"cancelled": "отменён",
 }
@@ -38,9 +35,9 @@ var exportItemStatusRU = map[string]string{
 var exportResultRU = map[string]string{
 	"reachable":   "в сети",
 	"unreachable": "не в сети",
-	"pending":     "в обработке",
-	"error":       "ошибка проверки",
-	"unknown":     "нет данных",
+	"pending":     "ожидание",
+	"error":       "ошибка",
+	"unknown":     "неизвестно",
 }
 
 var exportProviderStatusErr = map[string]string{
@@ -64,22 +61,6 @@ var exportProviderAPIErr = map[string]string{
 	"9": "Слишком много одинаковых запросов",
 }
 
-var exportItemError = map[string]string{
-	"CHECK_TIMEOUT":               "Истекло время ожидания ответа провайдера",
-	"QUEUE_DEAD_LETTER":           "Сбой очереди обработки",
-	"MISSING_PROVIDER_MESSAGE_ID": "Нет идентификатора сообщения у провайдера",
-	"RESERVED_STALE_TIMEOUT":      "Превышено время ожидания отправки",
-	"CSV_EMPTY":                   "CSV не содержит номеров телефонов",
-	"CSV_TOO_MANY_ROWS":           "CSV превышает лимит строк",
-	"CSV_INVALID_PHONES":          "В CSV есть некорректные номера",
-	"PRICE_SNAPSHOT_MISSING":      "Не задана цена тарифа",
-	"CSV_PARSE_ABANDONED":         "Не удалось разобрать CSV",
-	"check_timeout":               "Истекло время ожидания ответа провайдера",
-	"reserved_stale_timeout":      "Превышено время ожидания отправки",
-	"csv_parse_abandoned":         "Не удалось разобрать CSV",
-	"csv_parse_failed":            "Не удалось разобрать CSV",
-}
-
 func ExportHeaders(checkType sqlcdb.LookupCheckType) []string {
 	if checkType == sqlcdb.LookupCheckTypeHlr {
 		return append([]string(nil), exportHeadersHLR...)
@@ -92,8 +73,7 @@ func ExportRow(checkType sqlcdb.LookupCheckType, item sqlcdb.LookupItem) []strin
 	cells := []string{
 		exportText(item.PhoneE164),
 		exportStatus(string(item.Status)),
-		exportResult(deref(item.ResultStatus)),
-		exportBool(item.IsReachable),
+		exportResultCell(item),
 	}
 	if checkType == sqlcdb.LookupCheckTypeHlr {
 		cells = append(cells,
@@ -107,87 +87,19 @@ func ExportRow(checkType sqlcdb.LookupCheckType, item sqlcdb.LookupItem) []strin
 			exportBool(item.Roaming),
 			exportText(extraString(extras, "roaming_country", "roamingCountry")),
 			exportText(extraString(extras, "roaming_operator", "roamingOperator")),
-			exportProviderError(item),
 		)
 	}
-	cells = append(cells, exportDetails(item))
+	cells = append(cells, exportError(item))
 	return cells
 }
 
 func BuildXLSX(checkType sqlcdb.LookupCheckType, items []sqlcdb.LookupItem) ([]byte, error) {
 	headers := ExportHeaders(checkType)
-	var sheet strings.Builder
-	sheet.WriteString(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`)
-	sheet.WriteString(`<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>`)
-	writeXLSXRow(&sheet, 1, headers)
+	rows := make([][]string, len(items))
 	for i, item := range items {
-		writeXLSXRow(&sheet, i+2, ExportRow(checkType, item))
+		rows[i] = ExportRow(checkType, item)
 	}
-	sheet.WriteString(`</sheetData></worksheet>`)
-
-	buf := new(bytes.Buffer)
-	zw := zip.NewWriter(buf)
-	files := map[string]string{
-		"[Content_Types].xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-<Default Extension="xml" ContentType="application/xml"/>
-<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-</Types>`,
-		"_rels/.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`,
-		"xl/workbook.xml": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-<sheets><sheet name="items" sheetId="1" r:id="rId1"/></sheets>
-</workbook>`,
-		"xl/_rels/workbook.xml.rels": `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-</Relationships>`,
-		"xl/worksheets/sheet1.xml": sheet.String(),
-	}
-	for name, body := range files {
-		w, err := zw.Create(name)
-		if err != nil {
-			return nil, err
-		}
-		if _, err := w.Write([]byte(body)); err != nil {
-			return nil, err
-		}
-	}
-	if err := zw.Close(); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func writeXLSXRow(b *strings.Builder, row int, cells []string) {
-	fmt.Fprintf(b, `<row r="%d">`, row)
-	for i, cell := range cells {
-		col := xlsxCol(i)
-		fmt.Fprintf(b, `<c r="%s%d" t="inlineStr"><is><t xml:space="preserve">%s</t></is></c>`, col, row, xlsxEscape(cell))
-	}
-	b.WriteString(`</row>`)
-}
-
-func xlsxCol(i int) string {
-	s := ""
-	i++
-	for i > 0 {
-		i--
-		s = string(rune('A'+i%26)) + s
-		i /= 26
-	}
-	return s
-}
-
-func xlsxEscape(s string) string {
-	var b strings.Builder
-	_ = xml.EscapeText(&b, []byte(s))
-	return b.String()
+	return xlsxexport.Build("items", headers, rows)
 }
 
 func exportText(s string) string {
@@ -207,14 +119,14 @@ func exportStatus(status string) string {
 	return status
 }
 
-func exportResult(result string) string {
-	if result == "" {
-		return exportDash
+func exportResultCell(item sqlcdb.LookupItem) string {
+	if result := deref(item.ResultStatus); result != "" {
+		if v, ok := exportResultRU[result]; ok {
+			return v
+		}
+		return result
 	}
-	if v, ok := exportResultRU[result]; ok {
-		return v
-	}
-	return result
+	return exportBool(item.IsReachable)
 }
 
 func exportBool(v *bool) string {
@@ -225,6 +137,13 @@ func exportBool(v *bool) string {
 		return "да"
 	}
 	return "нет"
+}
+
+func exportError(item sqlcdb.LookupItem) string {
+	if msg := strings.TrimSpace(deref(item.ErrorMessage)); msg != "" {
+		return msg
+	}
+	return exportProviderError(item)
 }
 
 func exportProviderError(item sqlcdb.LookupItem) string {
@@ -241,29 +160,4 @@ func exportProviderError(item sqlcdb.LookupItem) string {
 		return v
 	}
 	return code
-}
-
-func exportDetails(item sqlcdb.LookupItem) string {
-	code := strings.TrimSpace(deref(item.ErrorCode))
-	if code != "" {
-		if v, ok := exportItemError[code]; ok {
-			return v
-		}
-		if v, ok := exportItemError[strings.ToUpper(code)]; ok {
-			return v
-		}
-	}
-	msg := sanitizeProviderBrand(deref(item.ErrorMessage))
-	if msg == "" {
-		return exportDash
-	}
-	return msg
-}
-
-func sanitizeProviderBrand(s string) string {
-	if s == "" {
-		return ""
-	}
-	replacer := strings.NewReplacer("SMSC.ru", "провайдер", "smsc.ru", "провайдер", "SMSC", "провайдер", "smsc", "провайдер")
-	return replacer.Replace(s)
 }

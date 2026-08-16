@@ -17,6 +17,7 @@ PostgreSQL 16. UUID PK, `timestamptz` UTC. Текст SMS — ПДн: тольк
 - Stale `send_jobs.processing` → `uncertain` (не `pending`), чтобы не слать SMS дважды
 - Assign пишет `number_assignments` и `def_numbers.status=assigned` в одной транзакции, затем outbox `number_direction_jobs` (worker: `PATCH /numbers/{n}/sms/directions`)
 - Unassign сразу закрывает assignment (`unassigned_at`); направления у провайдера не откатываем
+- Удаление клиента: tombstone `clients` остаётся (`status=deleted`, `name=deleted`, `purged_at` когда история стёрта). Восстановления нет.
 
 ## Горячие индексы
 
@@ -40,7 +41,7 @@ Lookup: цена за проверку, снимок на `lookup_jobs` / `looku
 
 - нет тарифа → 409, нет денег → 402
 - retention не удаляет SMS с открытым HOLD; lookup job/item с остатком HOLD не удалять
-- строки леджера не чистятся
+- строки леджера не чистятся retention; **исключение:** удаление клиента в админке стирает кошелёк и журнал этого клиента
 
 Продукты тарифа: `sms_domestic`, `sms_international`, `hlr`, `silent_sms`. Silent default нет.
 

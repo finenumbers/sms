@@ -83,7 +83,7 @@ client_max_body_size 50m;
 ## Редеплой
 
 1. GitHub → Release (двигает `ghcr.io/finenumbers/sms:latest`).
-2. Portainer → стек → Editor → **Pull and redeploy**.
+2. Portainer → стек → Editor → **Pull and redeploy** **api и worker** (один тег). Worker обязателен: дочистка истории удалённых клиентов идёт на нём.
 3. `migrate` отработает до старта api/worker. Данные в volume `postgres_data` не трогать.
 
 Откат образа: выставить `FINENUMBERS_IMAGE=ghcr.io/finenumbers/sms:vX.Y.Z` предыдущего релиза, Pull and redeploy, затем вернуть дефолт `:latest` на следующем релизе.

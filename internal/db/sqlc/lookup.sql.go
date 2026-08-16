@@ -168,6 +168,7 @@ SET updated_at = now()
 WHERE i.id IN (
     SELECT e.id
     FROM lookup_items e
+    JOIN clients cl ON cl.id = e.client_id AND cl.status = 'active'
     WHERE e.check_type = 'hlr'
       AND e.status IN ('completed', 'failed')
       AND e.provider_message_id IS NOT NULL
@@ -253,25 +254,27 @@ SET next_poll_at = now() + interval '120 seconds',
 WHERE i.id IN (
     SELECT j.id
     FROM (
-        SELECT client_id
-        FROM lookup_items
-        WHERE status = 'pending'
-          AND next_poll_at IS NOT NULL
-          AND next_poll_at <= now()
-        GROUP BY client_id
-        ORDER BY MIN(next_poll_at)
+        SELECT i.client_id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.status = 'pending'
+          AND i.next_poll_at IS NOT NULL
+          AND i.next_poll_at <= now()
+        GROUP BY i.client_id
+        ORDER BY MIN(i.next_poll_at)
         LIMIT $1
     ) c
     CROSS JOIN LATERAL (
-        SELECT id
-        FROM lookup_items
-        WHERE client_id IS NOT DISTINCT FROM c.client_id
-          AND status = 'pending'
-          AND next_poll_at IS NOT NULL
-          AND next_poll_at <= now()
-        ORDER BY next_poll_at, id
+        SELECT i.id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.client_id IS NOT DISTINCT FROM c.client_id
+          AND i.status = 'pending'
+          AND i.next_poll_at IS NOT NULL
+          AND i.next_poll_at <= now()
+        ORDER BY i.next_poll_at, i.id
         LIMIT $2
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF i SKIP LOCKED
     ) j
 )
 RETURNING id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
@@ -344,21 +347,23 @@ SET status = 'reserved', updated_at = now()
 WHERE i.id IN (
     SELECT j.id
     FROM (
-        SELECT client_id
-        FROM lookup_items
-        WHERE status = 'queued'
-        GROUP BY client_id
-        ORDER BY MIN(created_at)
+        SELECT i.client_id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.status = 'queued'
+        GROUP BY i.client_id
+        ORDER BY MIN(i.created_at)
         LIMIT $1
     ) c
     CROSS JOIN LATERAL (
-        SELECT id
-        FROM lookup_items
-        WHERE client_id IS NOT DISTINCT FROM c.client_id
-          AND status = 'queued'
-        ORDER BY created_at, id
+        SELECT i.id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.client_id IS NOT DISTINCT FROM c.client_id
+          AND i.status = 'queued'
+        ORDER BY i.created_at, i.id
         LIMIT $2
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF i SKIP LOCKED
     ) j
 )
 RETURNING id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
@@ -431,23 +436,25 @@ SET status = status
 WHERE i.id IN (
     SELECT j.id
     FROM (
-        SELECT client_id
-        FROM lookup_items
-        WHERE status = 'reserved'
-          AND updated_at <= now() - interval '5 seconds'
-        GROUP BY client_id
-        ORDER BY MIN(updated_at)
+        SELECT i.client_id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.status = 'reserved'
+          AND i.updated_at <= now() - interval '5 seconds'
+        GROUP BY i.client_id
+        ORDER BY MIN(i.updated_at)
         LIMIT $1
     ) c
     CROSS JOIN LATERAL (
-        SELECT id
-        FROM lookup_items
-        WHERE client_id IS NOT DISTINCT FROM c.client_id
-          AND status = 'reserved'
-          AND updated_at <= now() - interval '5 seconds'
-        ORDER BY updated_at, id
+        SELECT i.id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.client_id IS NOT DISTINCT FROM c.client_id
+          AND i.status = 'reserved'
+          AND i.updated_at <= now() - interval '5 seconds'
+        ORDER BY i.updated_at, i.id
         LIMIT $2
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF i SKIP LOCKED
     ) j
 )
 RETURNING id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
@@ -627,9 +634,10 @@ func (q *Queries) CountLookupItemsSinceByTypeForClient(ctx context.Context, arg 
 const countLookupJobs = `-- name: CountLookupJobs :one
 SELECT count(*)::bigint AS n
 FROM lookup_jobs
-WHERE ($1::uuid IS NULL OR client_id = $1)
-  AND ($2::lookup_job_status IS NULL OR status = $2)
-  AND ($3::lookup_check_type IS NULL OR check_type = $3)
+JOIN clients ON clients.id = lookup_jobs.client_id AND clients.status <> 'deleted'
+WHERE ($1::uuid IS NULL OR lookup_jobs.client_id = $1)
+  AND ($2::lookup_job_status IS NULL OR lookup_jobs.status = $2)
+  AND ($3::lookup_check_type IS NULL OR lookup_jobs.check_type = $3)
 `
 
 type CountLookupJobsParams struct {
@@ -1964,12 +1972,13 @@ func (q *Queries) ListLookupItemsForClient(ctx context.Context, arg ListLookupIt
 }
 
 const listLookupJobs = `-- name: ListLookupJobs :many
-SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
+SELECT lookup_jobs.id, lookup_jobs.client_id, lookup_jobs.check_type, lookup_jobs.source, lookup_jobs.status, lookup_jobs.item_count, lookup_jobs.success_count, lookup_jobs.failure_count, lookup_jobs.unit_sell_price, lookup_jobs.tariff_plan_id, lookup_jobs.tariff_plan_code, lookup_jobs.currency, lookup_jobs.estimated_cost, lookup_jobs.actual_cost, lookup_jobs.original_filename, lookup_jobs.idempotency_key, lookup_jobs.created_by, lookup_jobs.api_credential_id, lookup_jobs.error_code, lookup_jobs.error_message, lookup_jobs.started_at, lookup_jobs.completed_at, lookup_jobs.metadata, lookup_jobs.created_at, lookup_jobs.updated_at, lookup_jobs.reachable_count, lookup_jobs.unreachable_count
 FROM lookup_jobs
-WHERE ($1::uuid IS NULL OR client_id = $1)
-  AND ($2::lookup_job_status IS NULL OR status = $2)
-  AND ($3::lookup_check_type IS NULL OR check_type = $3)
-ORDER BY created_at DESC, id DESC
+JOIN clients ON clients.id = lookup_jobs.client_id AND clients.status <> 'deleted'
+WHERE ($1::uuid IS NULL OR lookup_jobs.client_id = $1)
+  AND ($2::lookup_job_status IS NULL OR lookup_jobs.status = $2)
+  AND ($3::lookup_check_type IS NULL OR lookup_jobs.check_type = $3)
+ORDER BY lookup_jobs.created_at DESC, lookup_jobs.id DESC
 LIMIT $5 OFFSET $4
 `
 

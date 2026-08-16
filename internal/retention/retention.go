@@ -20,9 +20,15 @@ type SettingsView interface {
 	Get(ctx context.Context) (settings.Public, error)
 }
 
+type ClientPurge interface {
+	PurgeTick(ctx context.Context) (int, error)
+	ReopenLeakedPurges(ctx context.Context) error
+}
+
 type Worker struct {
 	store    *db.Store
 	settings SettingsView
+	purge    ClientPurge
 	log      *slog.Logger
 	now      func() time.Time
 	last     time.Time
@@ -35,9 +41,20 @@ func NewWorker(store *db.Store, settings SettingsView, log *slog.Logger) *Worker
 	return &Worker{store: store, settings: settings, log: log, now: func() time.Time { return time.Now().UTC() }}
 }
 
+func (w *Worker) SetClientPurge(p ClientPurge) {
+	if w != nil {
+		w.purge = p
+	}
+}
+
 func (w *Worker) Tick(ctx context.Context) error {
 	if w == nil {
 		return nil
+	}
+	if w.purge != nil {
+		if _, err := w.purge.PurgeTick(ctx); err != nil {
+			return err
+		}
 	}
 	if !w.last.IsZero() && w.now().Sub(w.last) < interval {
 		return nil
@@ -112,6 +129,11 @@ func (w *Worker) run(ctx context.Context) error {
 		return w.store.Queries.DeleteOldOpsEvents(ctx, opsCut)
 	}); err != nil {
 		return err
+	}
+	if w.purge != nil {
+		if err := w.purge.ReopenLeakedPurges(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }

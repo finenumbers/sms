@@ -17,13 +17,14 @@ UPDATE webhook_deliveries AS d
 SET next_attempt_at = now() + interval '120 seconds',
     updated_at = now()
 WHERE d.id IN (
-    SELECT id
-    FROM webhook_deliveries
-    WHERE status IN ('pending', 'failed')
-      AND next_attempt_at IS NOT NULL
-      AND next_attempt_at <= now()
-    ORDER BY next_attempt_at, id
-    FOR UPDATE SKIP LOCKED
+    SELECT d.id
+    FROM webhook_deliveries d
+    JOIN clients c ON c.id = d.client_id AND c.status = 'active'
+    WHERE d.status IN ('pending', 'failed')
+      AND d.next_attempt_at IS NOT NULL
+      AND d.next_attempt_at <= now()
+    ORDER BY d.next_attempt_at, d.id
+    FOR UPDATE OF d SKIP LOCKED
     LIMIT $1
 )
 RETURNING id, client_id, endpoint_id, job_id, job_item_id, event_type, payload, status, attempt_count, max_attempts, next_attempt_at, last_response_code, last_error, delivered_at, created_at, updated_at

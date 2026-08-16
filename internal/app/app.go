@@ -89,6 +89,7 @@ func runAPI(ctx context.Context, cfg config.Config, log *slog.Logger, withWorker
 	fanW := campaigns.NewWorker(store, settingsSvc, msg, log)
 	cbW := ingress.NewWorker(store, bill, log, opsLog)
 	retW := retention.NewWorker(store, settingsSvc, log)
+	retW.SetClientPurge(ident)
 	smscProv := newSMSCProvider(settingsSvc, store, log)
 	smscCache := smsc.NewBalanceCache(rdb.Cmdable())
 	lookupW, lookupSvc, hooks := newLookup(store, bill, smscProv, settingsSvc, limiter, log, smscCache)
@@ -194,6 +195,7 @@ func runWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		go serveMetrics(ctx, cfg.MetricsAddr, log)
 	}
 	bill := billing.New(store, log)
+	ident := identity.New(store, cfg.SessionTTL)
 	lookupW, _, _ := newLookup(store, bill, smscProv, settingsSvc, limiter, log, smscCache)
 	lookupCtx, stopLookup := context.WithCancel(ctx)
 	waitLookup := startLookupSideLoops(lookupCtx, log, lookupW)
@@ -201,7 +203,9 @@ func runWorker(ctx context.Context, cfg config.Config, log *slog.Logger) error {
 		stopLookup()
 		waitLookup()
 	}()
-	return runWorkerLoop(ctx, log, inventory.NewDirectionWorker(store, rx, log, opsLog), campaigns.NewWorker(store, settingsSvc, messaging.New(store, settingsSvc, bill), log), outbox.NewWorker(store, rx, limiter, settingsSvc, bill, log, opsLog), ingress.NewWorker(store, bill, log, opsLog), retention.NewWorker(store, settingsSvc, log))
+	retW := retention.NewWorker(store, settingsSvc, log)
+	retW.SetClientPurge(ident)
+	return runWorkerLoop(ctx, log, inventory.NewDirectionWorker(store, rx, log, opsLog), campaigns.NewWorker(store, settingsSvc, messaging.New(store, settingsSvc, bill), log), outbox.NewWorker(store, rx, limiter, settingsSvc, bill, log, opsLog), ingress.NewWorker(store, bill, log, opsLog), retW)
 }
 
 type runexisCreds struct {

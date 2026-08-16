@@ -68,6 +68,10 @@ WHERE id IN (
     SELECT id
     FROM sms_campaigns
     WHERE status = 'queued'
+      AND EXISTS (
+          SELECT 1 FROM clients cl
+          WHERE cl.id = sms_campaigns.client_id AND cl.status = 'active'
+      )
     ORDER BY created_at, id
     LIMIT sqlc.arg(batch_limit)
     FOR UPDATE SKIP LOCKED

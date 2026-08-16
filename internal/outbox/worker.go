@@ -124,6 +124,13 @@ func (w *Worker) process(ctx context.Context, job sqlcdb.SendJob) {
 		w.park(ctx, job, sqlcdb.SendJobStatusDead, job.Attempt, deref(job.LastError), 0)
 		return
 	}
+	if job.ClientID != nil {
+		cl, err := w.store.Queries.GetClientByID(ctx, *job.ClientID)
+		if err != nil || cl.Status == sqlcdb.ClientStatusDeleted {
+			w.park(ctx, job, sqlcdb.SendJobStatusDead, job.Attempt, "client deleted", 0)
+			return
+		}
+	}
 	if needStatistic(job) {
 		w.handleUncertain(ctx, job, msg)
 		return

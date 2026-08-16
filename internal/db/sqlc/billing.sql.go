@@ -713,7 +713,7 @@ SELECT
     t.id, t.wallet_id, t.client_id, t.type, t.amount, t.currency, t.balance_after_available, t.balance_after_held, t.related_hold_id, t.sms_message_id, t.idempotency_key, t.description, t.metadata, t.created_by, t.created_at, t.lookup_job_id, t.lookup_item_id,
     c.name AS client_name
 FROM wallet_transactions t
-JOIN clients c ON c.id = t.client_id
+JOIN clients c ON c.id = t.client_id AND c.status <> 'deleted'
 WHERE ($1::uuid IS NULL OR t.client_id = $1)
   AND ($2::wallet_tx_type IS NULL OR t.type = $2)
 ORDER BY t.created_at DESC, t.id DESC
@@ -1063,7 +1063,8 @@ const sumWalletBalances = `-- name: SumWalletBalances :one
 SELECT
     COALESCE(sum(available_balance), 0)::billing_money AS available_total,
     COALESCE(sum(held_balance), 0)::billing_money AS held_total
-FROM wallets
+FROM wallets w
+JOIN clients c ON c.id = w.client_id AND c.status = 'active'
 `
 
 type SumWalletBalancesRow struct {

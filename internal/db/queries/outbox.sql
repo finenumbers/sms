@@ -23,6 +23,13 @@ WHERE s.id IN (
         FROM send_jobs
         WHERE status IN ('pending', 'retry', 'uncertain')
           AND available_at <= now()
+          AND (
+              client_id IS NULL
+              OR EXISTS (
+                  SELECT 1 FROM clients cl
+                  WHERE cl.id = send_jobs.client_id AND cl.status = 'active'
+              )
+          )
         GROUP BY client_id
         ORDER BY MIN(available_at)
         LIMIT sqlc.arg(batch_limit)
@@ -33,6 +40,13 @@ WHERE s.id IN (
         WHERE client_id IS NOT DISTINCT FROM c.client_id
           AND status IN ('pending', 'retry', 'uncertain')
           AND available_at <= now()
+          AND (
+              client_id IS NULL
+              OR EXISTS (
+                  SELECT 1 FROM clients cl
+                  WHERE cl.id = send_jobs.client_id AND cl.status = 'active'
+              )
+          )
         ORDER BY
             CASE status
                 WHEN 'uncertain' THEN 0

@@ -64,7 +64,7 @@ SELECT
     t.*,
     c.name AS client_name
 FROM wallet_transactions t
-JOIN clients c ON c.id = t.client_id
+JOIN clients c ON c.id = t.client_id AND c.status <> 'deleted'
 WHERE (sqlc.narg(client_id)::uuid IS NULL OR t.client_id = sqlc.narg(client_id))
   AND (sqlc.narg(tx_type)::wallet_tx_type IS NULL OR t.type = sqlc.narg(tx_type))
 ORDER BY t.created_at DESC, t.id DESC
@@ -74,7 +74,8 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 SELECT
     COALESCE(sum(available_balance), 0)::billing_money AS available_total,
     COALESCE(sum(held_balance), 0)::billing_money AS held_total
-FROM wallets;
+FROM wallets w
+JOIN clients c ON c.id = w.client_id AND c.status = 'active';
 
 -- name: CountLowBalanceClients :one
 SELECT count(*)::bigint AS n

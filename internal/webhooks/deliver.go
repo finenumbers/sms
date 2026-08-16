@@ -38,6 +38,9 @@ func (s *Service) enqueue(ctx context.Context, clientID uuid.UUID, eventType str
 	if !KnownEvent(eventType) {
 		return 0, nil
 	}
+	if cl, err := s.store.Queries.GetClientByID(ctx, clientID); err == nil && cl.Status != sqlcdb.ClientStatusActive {
+		return 0, nil
+	}
 	endpoints, err := s.store.Queries.ListEnabledWebhookEndpoints(ctx, clientID)
 	if err != nil {
 		return 0, err

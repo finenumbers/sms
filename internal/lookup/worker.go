@@ -254,6 +254,9 @@ func (w *Worker) submitItem(ctx context.Context, item sqlcdb.LookupItem, view se
 		w.failItem(ctx, item, "client_not_found", "client not found", true)
 		return
 	}
+	if client.Status == sqlcdb.ClientStatusDeleted {
+		return
+	}
 	if client.Status != sqlcdb.ClientStatusActive {
 		w.failItem(ctx, item, "client_suspended", "client is not active", true)
 		return
@@ -664,6 +667,9 @@ func (w *Worker) patchItem(ctx context.Context, item sqlcdb.LookupItem, n smsc.N
 }
 
 func (w *Worker) failItem(ctx context.Context, item sqlcdb.LookupItem, code, message string, release bool) {
+	if cl, err := w.store.Queries.GetClientByID(ctx, item.ClientID); err == nil && cl.Status == sqlcdb.ClientStatusDeleted {
+		return
+	}
 	now := w.now()
 	updated, err := w.store.Queries.TransitionLookupItem(ctx, sqlcdb.TransitionLookupItemParams{
 		ToStatus:     sqlcdb.LookupItemStatusFailed,
@@ -692,6 +698,9 @@ func (w *Worker) failItem(ctx context.Context, item sqlcdb.LookupItem, code, mes
 
 func (w *Worker) onItemTerminal(ctx context.Context, item sqlcdb.LookupItem, action string) {
 	if !IsTerminalItem(item.Status) {
+		return
+	}
+	if cl, err := w.store.Queries.GetClientByID(ctx, item.ClientID); err == nil && cl.Status == sqlcdb.ClientStatusDeleted {
 		return
 	}
 	if action == "" {
@@ -909,6 +918,9 @@ func (w *Worker) enrichTerminalHLR(ctx context.Context, deadline time.Time) (int
 			break
 		}
 		item := items[i]
+		if cl, err := w.store.Queries.GetClientByID(ctx, item.ClientID); err == nil && cl.Status != sqlcdb.ClientStatusActive {
+			continue
+		}
 		enriched, invoked := w.enrichHLR(ctx, item, mergeNormalizedWithItem(smsc.NormalizedResult{}, item), deadline)
 		if hlrFieldsImproved(enriched, item) {
 			from := []sqlcdb.LookupItemStatus{item.Status}

@@ -26,6 +26,11 @@ func (p *Persistence) SaveRequest(ctx context.Context, record smsc.RequestRecord
 	if p == nil || p.q == nil {
 		return smsc.SaveResult{}, errors.New("lookup persistence not configured")
 	}
+	if tid := parseUUIDPtr(record.TenantID); tid != nil {
+		if cl, err := p.q.GetClientByID(ctx, *tid); err == nil && cl.Status == sqlcdb.ClientStatusDeleted {
+			return smsc.SaveResult{}, nil
+		}
+	}
 	kind, err := mapRequestKind(record.Kind)
 	if err != nil {
 		return smsc.SaveResult{}, err

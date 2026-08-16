@@ -31,6 +31,20 @@ func (s *Service) queries() *sqlcdb.Queries {
 	return s.store.Queries
 }
 
+func (s *Service) clientDeleted(ctx context.Context, q *sqlcdb.Queries, clientID uuid.UUID) (bool, error) {
+	if q == nil {
+		q = s.queries()
+	}
+	cl, err := q.GetClientByID(ctx, clientID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return true, nil
+		}
+		return false, err
+	}
+	return cl.Status == sqlcdb.ClientStatusDeleted, nil
+}
+
 func HoldKey(messageID uuid.UUID) string   { return "hold:sms:" + messageID.String() }
 func DebitKey(messageID uuid.UUID) string  { return "debit:sms:" + messageID.String() }
 func ReleaseKey(messageID uuid.UUID) string { return "release:sms:" + messageID.String() }
@@ -48,6 +62,11 @@ func (s *Service) ReserveForMessage(ctx context.Context, q *sqlcdb.Queries, msg 
 	}
 	if msg.ClientID == nil {
 		return wrap(ErrValidation, "validation", "message has no client")
+	}
+	if gone, err := s.clientDeleted(ctx, q, *msg.ClientID); err != nil {
+		return err
+	} else if gone {
+		return nil
 	}
 	if msg.UnitSellPrice == nil || msg.BilledSegments == nil || msg.TariffPlanID == nil || msg.TariffPlanCode == nil || msg.Currency == nil {
 		return wrap(ErrPriceSnapshotMissing, "price_snapshot_missing", "price snapshot missing")
@@ -138,6 +157,13 @@ func (s *Service) settle(ctx context.Context, messageID uuid.UUID, capture bool)
 		return err
 	}
 	if msg.ClientID == nil || msg.UnitSellPrice == nil {
+		return tx.Commit(ctx)
+	}
+	gone, err := s.clientDeleted(ctx, q, *msg.ClientID)
+	if err != nil {
+		return err
+	}
+	if gone {
 		return tx.Commit(ctx)
 	}
 

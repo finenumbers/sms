@@ -75,21 +75,23 @@ SET status = 'reserved', updated_at = now()
 WHERE i.id IN (
     SELECT j.id
     FROM (
-        SELECT client_id
-        FROM lookup_items
-        WHERE status = 'queued'
-        GROUP BY client_id
-        ORDER BY MIN(created_at)
+        SELECT i.client_id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.status = 'queued'
+        GROUP BY i.client_id
+        ORDER BY MIN(i.created_at)
         LIMIT sqlc.arg(client_limit)
     ) c
     CROSS JOIN LATERAL (
-        SELECT id
-        FROM lookup_items
-        WHERE client_id IS NOT DISTINCT FROM c.client_id
-          AND status = 'queued'
-        ORDER BY created_at, id
+        SELECT i.id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.client_id IS NOT DISTINCT FROM c.client_id
+          AND i.status = 'queued'
+        ORDER BY i.created_at, i.id
         LIMIT sqlc.arg(per_client)
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF i SKIP LOCKED
     ) j
 )
 RETURNING *;
@@ -108,23 +110,25 @@ SET status = status
 WHERE i.id IN (
     SELECT j.id
     FROM (
-        SELECT client_id
-        FROM lookup_items
-        WHERE status = 'reserved'
-          AND updated_at <= now() - interval '5 seconds'
-        GROUP BY client_id
-        ORDER BY MIN(updated_at)
+        SELECT i.client_id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.status = 'reserved'
+          AND i.updated_at <= now() - interval '5 seconds'
+        GROUP BY i.client_id
+        ORDER BY MIN(i.updated_at)
         LIMIT sqlc.arg(client_limit)
     ) c
     CROSS JOIN LATERAL (
-        SELECT id
-        FROM lookup_items
-        WHERE client_id IS NOT DISTINCT FROM c.client_id
-          AND status = 'reserved'
-          AND updated_at <= now() - interval '5 seconds'
-        ORDER BY updated_at, id
+        SELECT i.id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.client_id IS NOT DISTINCT FROM c.client_id
+          AND i.status = 'reserved'
+          AND i.updated_at <= now() - interval '5 seconds'
+        ORDER BY i.updated_at, i.id
         LIMIT sqlc.arg(per_client)
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF i SKIP LOCKED
     ) j
 )
 RETURNING *;
@@ -143,25 +147,27 @@ SET next_poll_at = now() + interval '120 seconds',
 WHERE i.id IN (
     SELECT j.id
     FROM (
-        SELECT client_id
-        FROM lookup_items
-        WHERE status = 'pending'
-          AND next_poll_at IS NOT NULL
-          AND next_poll_at <= now()
-        GROUP BY client_id
-        ORDER BY MIN(next_poll_at)
+        SELECT i.client_id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.status = 'pending'
+          AND i.next_poll_at IS NOT NULL
+          AND i.next_poll_at <= now()
+        GROUP BY i.client_id
+        ORDER BY MIN(i.next_poll_at)
         LIMIT sqlc.arg(client_limit)
     ) c
     CROSS JOIN LATERAL (
-        SELECT id
-        FROM lookup_items
-        WHERE client_id IS NOT DISTINCT FROM c.client_id
-          AND status = 'pending'
-          AND next_poll_at IS NOT NULL
-          AND next_poll_at <= now()
-        ORDER BY next_poll_at, id
+        SELECT i.id
+        FROM lookup_items i
+        JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
+        WHERE i.client_id IS NOT DISTINCT FROM c.client_id
+          AND i.status = 'pending'
+          AND i.next_poll_at IS NOT NULL
+          AND i.next_poll_at <= now()
+        ORDER BY i.next_poll_at, i.id
         LIMIT sqlc.arg(per_client)
-        FOR UPDATE SKIP LOCKED
+        FOR UPDATE OF i SKIP LOCKED
     ) j
 )
 RETURNING *;
@@ -467,20 +473,22 @@ WHERE id = sqlc.arg(id)
   AND client_id = sqlc.arg(client_id);
 
 -- name: ListLookupJobs :many
-SELECT *
+SELECT lookup_jobs.*
 FROM lookup_jobs
-WHERE (sqlc.narg(client_id)::uuid IS NULL OR client_id = sqlc.narg(client_id))
-  AND (sqlc.narg(filter_status)::lookup_job_status IS NULL OR status = sqlc.narg(filter_status))
-  AND (sqlc.narg(filter_check_type)::lookup_check_type IS NULL OR check_type = sqlc.narg(filter_check_type))
-ORDER BY created_at DESC, id DESC
+JOIN clients ON clients.id = lookup_jobs.client_id AND clients.status <> 'deleted'
+WHERE (sqlc.narg(client_id)::uuid IS NULL OR lookup_jobs.client_id = sqlc.narg(client_id))
+  AND (sqlc.narg(filter_status)::lookup_job_status IS NULL OR lookup_jobs.status = sqlc.narg(filter_status))
+  AND (sqlc.narg(filter_check_type)::lookup_check_type IS NULL OR lookup_jobs.check_type = sqlc.narg(filter_check_type))
+ORDER BY lookup_jobs.created_at DESC, lookup_jobs.id DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: CountLookupJobs :one
 SELECT count(*)::bigint AS n
 FROM lookup_jobs
-WHERE (sqlc.narg(client_id)::uuid IS NULL OR client_id = sqlc.narg(client_id))
-  AND (sqlc.narg(filter_status)::lookup_job_status IS NULL OR status = sqlc.narg(filter_status))
-  AND (sqlc.narg(filter_check_type)::lookup_check_type IS NULL OR check_type = sqlc.narg(filter_check_type));
+JOIN clients ON clients.id = lookup_jobs.client_id AND clients.status <> 'deleted'
+WHERE (sqlc.narg(client_id)::uuid IS NULL OR lookup_jobs.client_id = sqlc.narg(client_id))
+  AND (sqlc.narg(filter_status)::lookup_job_status IS NULL OR lookup_jobs.status = sqlc.narg(filter_status))
+  AND (sqlc.narg(filter_check_type)::lookup_check_type IS NULL OR lookup_jobs.check_type = sqlc.narg(filter_check_type));
 
 -- name: ListLookupItemsByJobPage :many
 SELECT *
@@ -600,6 +608,7 @@ SET updated_at = now()
 WHERE i.id IN (
     SELECT e.id
     FROM lookup_items e
+    JOIN clients cl ON cl.id = e.client_id AND cl.status = 'active'
     WHERE e.check_type = 'hlr'
       AND e.status IN ('completed', 'failed')
       AND e.provider_message_id IS NOT NULL

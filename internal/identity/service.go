@@ -360,55 +360,6 @@ func (s *Service) ActivateClient(ctx context.Context, id uuid.UUID) (sqlcdb.Clie
 	return s.setStatus(ctx, id, sqlcdb.ClientStatusSuspended, sqlcdb.ClientStatusActive)
 }
 
-func (s *Service) DeleteClient(ctx context.Context, id uuid.UUID) (sqlcdb.Client, error) {
-	return s.DeleteClientAnd(ctx, id, nil)
-}
-
-func (s *Service) DeleteClientAnd(ctx context.Context, id uuid.UUID, afterLock func(context.Context, *sqlcdb.Queries) error) (sqlcdb.Client, error) {
-	tx, err := s.store.Pool.Begin(ctx)
-	if err != nil {
-		return sqlcdb.Client{}, err
-	}
-	defer tx.Rollback(ctx)
-	q := s.store.Queries.WithTx(tx)
-
-	cl, err := q.GetClientByIDForUpdate(ctx, id)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return sqlcdb.Client{}, ErrNotFound
-		}
-		return sqlcdb.Client{}, err
-	}
-	if cl.Status == sqlcdb.ClientStatusDeleted {
-		return sqlcdb.Client{}, ErrNotFound
-	}
-	if afterLock != nil {
-		if err := afterLock(ctx, q); err != nil {
-			return sqlcdb.Client{}, err
-		}
-	}
-	out, err := q.SetClientStatus(ctx, sqlcdb.SetClientStatusParams{
-		Status: sqlcdb.ClientStatusDeleted,
-		ID:     id,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return sqlcdb.Client{}, ErrNotFound
-		}
-		return sqlcdb.Client{}, err
-	}
-	if err := q.RevokeSessionsForClient(ctx, id); err != nil {
-		return sqlcdb.Client{}, err
-	}
-	if err := q.RevokeAPICredentialsForClient(ctx, id); err != nil {
-		return sqlcdb.Client{}, err
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return sqlcdb.Client{}, err
-	}
-	return out, nil
-}
-
 func (s *Service) setStatus(ctx context.Context, id uuid.UUID, from, to sqlcdb.ClientStatus) (sqlcdb.Client, error) {
 	cl, err := s.store.Queries.GetClientByID(ctx, id)
 	if err != nil {

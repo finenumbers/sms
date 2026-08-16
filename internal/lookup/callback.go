@@ -179,6 +179,9 @@ func (w *Worker) ApplyIncoming(ctx context.Context, in IncomingCallback) (Incomi
 	if !callbackPhonesMatch(item.PhoneDigits, in.PhoneDigits) {
 		return IncomingResult{Reason: "phone_mismatch", Item: item}, nil
 	}
+	if cl, err := w.store.Queries.GetClientByID(ctx, item.ClientID); err == nil && cl.Status == sqlcdb.ClientStatusDeleted {
+		return IncomingResult{Applied: true, Item: item}, nil
+	}
 	applied, err := w.ApplyProviderUpdate(ctx, ApplyInput{
 		JobItemID:         item.ID,
 		ClientID:          item.ClientID,

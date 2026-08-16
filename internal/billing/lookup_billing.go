@@ -54,6 +54,11 @@ func (s *Service) ReserveForLookupJob(ctx context.Context, q *sqlcdb.Queries, jo
 	if q == nil {
 		return errors.New("reserve lookup job requires transaction queries")
 	}
+	if gone, err := s.clientDeleted(ctx, q, job.ClientID); err != nil {
+		return err
+	} else if gone {
+		return nil
+	}
 	if job.ItemCount < 1 {
 		return wrap(ErrValidation, "validation", "lookup job has no items")
 	}
@@ -155,6 +160,13 @@ func (s *Service) settleLookupItemOnce(ctx context.Context, itemID uuid.UUID, ca
 	item, err := q.GetLookupItem(ctx, itemID)
 	if err != nil {
 		return err
+	}
+	gone, err := s.clientDeleted(ctx, q, item.ClientID)
+	if err != nil {
+		return err
+	}
+	if gone {
+		return tx.Commit(ctx)
 	}
 	if item.BillingAction.Valid {
 		want := sqlcdb.BillingActionCapture
@@ -319,6 +331,13 @@ func (s *Service) releaseLookupJobRemainderOnce(ctx context.Context, jobID uuid.
 			return tx.Commit(ctx)
 		}
 		return err
+	}
+	gone, err := s.clientDeleted(ctx, q, hold.ClientID)
+	if err != nil {
+		return err
+	}
+	if gone {
+		return tx.Commit(ctx)
 	}
 	settled, err := q.SumSettledAgainstHold(ctx, &hold.ID)
 	if err != nil {

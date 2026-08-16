@@ -20,6 +20,6 @@ Sliding 12h: PG двигает `expires_at`; authenticated-запрос зано
 
 CSRF на cookie-API: обязательный заголовок `X-Requested-With`. Если браузер прислал `Origin` или `Referer`, их host должен совпасть с `Host` запроса. Без Origin/Referer (curl) достаточно заголовка.
 
-Email: `UNIQUE (LOWER(email))` в каждой таблице principal. Один email может быть и админом, и клиентом.
+Email: `UNIQUE (LOWER(email))` в каждой таблице principal. Один email может быть и админом, и клиентом. Удаление клиента в админке затирает email пользователей (`deleted-{uuid}@invalid`), поэтому тот же адрес можно выдать новому клиенту.
 
 RLS — не v1: фильтр `client_id` в каждом запросе + тесты.

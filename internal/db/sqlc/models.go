@@ -1202,6 +1202,7 @@ type Client struct {
 	Status    ClientStatus `json:"status"`
 	CreatedAt time.Time    `json:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at"`
+	PurgedAt  *time.Time   `json:"purged_at"`
 }
 
 type ClientTariff struct {

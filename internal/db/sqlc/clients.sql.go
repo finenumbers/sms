@@ -14,7 +14,7 @@ import (
 )
 
 const getClientByID = `-- name: GetClientByID :one
-SELECT id, name, status, created_at, updated_at FROM clients WHERE id = $1
+SELECT id, name, status, created_at, updated_at, purged_at FROM clients WHERE id = $1
 `
 
 func (q *Queries) GetClientByID(ctx context.Context, id uuid.UUID) (Client, error) {
@@ -26,12 +26,13 @@ func (q *Queries) GetClientByID(ctx context.Context, id uuid.UUID) (Client, erro
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
 
 const getClientByIDForUpdate = `-- name: GetClientByIDForUpdate :one
-SELECT id, name, status, created_at, updated_at FROM clients WHERE id = $1 FOR UPDATE
+SELECT id, name, status, created_at, updated_at, purged_at FROM clients WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetClientByIDForUpdate(ctx context.Context, id uuid.UUID) (Client, error) {
@@ -43,6 +44,7 @@ func (q *Queries) GetClientByIDForUpdate(ctx context.Context, id uuid.UUID) (Cli
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
@@ -50,7 +52,7 @@ func (q *Queries) GetClientByIDForUpdate(ctx context.Context, id uuid.UUID) (Cli
 const insertClient = `-- name: InsertClient :one
 INSERT INTO clients (name, status)
 VALUES ($1, 'active')
-RETURNING id, name, status, created_at, updated_at
+RETURNING id, name, status, created_at, updated_at, purged_at
 `
 
 func (q *Queries) InsertClient(ctx context.Context, name string) (Client, error) {
@@ -62,6 +64,7 @@ func (q *Queries) InsertClient(ctx context.Context, name string) (Client, error)
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
@@ -151,7 +154,7 @@ const setClientStatus = `-- name: SetClientStatus :one
 UPDATE clients
 SET status = $1, updated_at = now()
 WHERE id = $2 AND status <> 'deleted'
-RETURNING id, name, status, created_at, updated_at
+RETURNING id, name, status, created_at, updated_at, purged_at
 `
 
 type SetClientStatusParams struct {
@@ -168,6 +171,7 @@ func (q *Queries) SetClientStatus(ctx context.Context, arg SetClientStatusParams
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }
@@ -176,7 +180,7 @@ const updateClientName = `-- name: UpdateClientName :one
 UPDATE clients
 SET name = $1, updated_at = now()
 WHERE id = $2 AND status <> 'deleted'
-RETURNING id, name, status, created_at, updated_at
+RETURNING id, name, status, created_at, updated_at, purged_at
 `
 
 type UpdateClientNameParams struct {
@@ -193,6 +197,7 @@ func (q *Queries) UpdateClientName(ctx context.Context, arg UpdateClientNamePara
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.PurgedAt,
 	)
 	return i, err
 }

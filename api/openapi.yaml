@@ -159,7 +159,7 @@ paths:
         - $ref: "#/components/parameters/ClientID"
       responses:
         "204":
-          description: Soft-deleted; numbers returned to inventory
+          description: Access revoked and tenant data wiped; numbers returned to inventory. Large histories finish on the worker.
   /admin/v1/clients/{clientID}/suspend:
     post:
       tags: [admin]

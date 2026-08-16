@@ -196,7 +196,7 @@ export function ClientDetailPage() {
               variant="danger"
               type="button"
               onClick={() => {
-                if (window.confirm("Удалить клиента? Номера снимутся, ключи отзовутся.")) {
+                if (window.confirm("Удалить клиента безвозвратно? Сотрутся SMS, кампании, HLR/SSMS, кошелёк и пользователи. Номера вернутся в инвентарь. Тот же email можно будет выдать новому клиенту.")) {
                   del.mutate();
                 }
               }}

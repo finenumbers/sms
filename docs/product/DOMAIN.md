@@ -37,7 +37,8 @@ Operator of the admin panel.
 
 Tenant / customer organization.
 
-- `id`, `name`, `status` (`active` / `suspended` / `deleted`)
+- `id`, `name`, `status` (`active` / `suspended` / `deleted`), `purged_at` after hard wipe
+- delete in admin wipes tenant SMS, campaigns, HLR/SSMS, wallet, users; numbers return to inventory; same email may be reused on a new client
 - contact fields as needed later
 - **no** Runexis credentials per client in v1 — platform uses one agent account
 
@@ -117,7 +118,7 @@ Platform-wide configuration (admin Settings section).
 
 ## Admin panel (v1 surface)
 
-- Clients: create / update / delete (or soft-delete)
+- Clients: create / update / delete (wipes tenant data; tombstone stays `deleted`)
 - DEF numbers: load purchased numbers from DIDAPI; assign / unassign to client
 - Settings: system config + API authorization management
 - Extension points reserved for later modules

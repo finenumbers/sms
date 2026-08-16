@@ -216,21 +216,25 @@ func (h *Handlers) DeleteClient(w http.ResponseWriter, r *http.Request) {
 			return err
 		}
 	}
-	cl, err := h.Ident.DeleteClientAnd(r.Context(), id, afterLock)
+	workCtx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), identity.PurgeHTTPBudget)
+	defer cancel()
+	out, err := h.Ident.DeleteClientAnd(workCtx, id, afterLock)
 	if err != nil {
 		writeClientErr(w, h, "delete client", err)
 		return
 	}
-	h.Audit.Write(r.Context(), audit.Event{
-		ActorType:    sqlcdb.ActorTypeAdmin,
-		ActorID:      p.AdminUserID,
-		ClientID:     &cl.ID,
-		Action:       "client.delete",
-		ResourceType: "client",
-		ResourceID:   &cl.ID,
-		IP:           httpx.ClientIP(r),
-		UserAgent:    httpx.UserAgent(r),
-	})
+	if out.Fresh {
+		h.Audit.Write(r.Context(), audit.Event{
+			ActorType:    sqlcdb.ActorTypeAdmin,
+			ActorID:      p.AdminUserID,
+			ClientID:     &out.Client.ID,
+			Action:       "client.delete",
+			ResourceType: "client",
+			ResourceID:   &out.Client.ID,
+			IP:           httpx.ClientIP(r),
+			UserAgent:    httpx.UserAgent(r),
+		})
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 

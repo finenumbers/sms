@@ -81,11 +81,16 @@ func TestParseCIDRsInvalid(t *testing.T) {
 }
 
 func TestNormalizeScopes(t *testing.T) {
-	got, err := normalizeScopes(nil)
-	if err != nil || len(got) != 5 {
-		t.Fatalf("default: %v %v", got, err)
+	if _, err := normalizeScopes(nil); err == nil {
+		t.Fatal("nil scopes must require at least one")
 	}
-	got, err = normalizeScopes([]string{"sms:send", "sms:send", "sms:read"})
+	if _, err := normalizeScopes([]string{}); err == nil {
+		t.Fatal("empty scopes must require at least one")
+	}
+	if _, err := normalizeScopes([]string{"", "  "}); err == nil {
+		t.Fatal("blank scopes must require at least one")
+	}
+	got, err := normalizeScopes([]string{"sms:send", "sms:send", "sms:read"})
 	if err != nil || len(got) != 2 {
 		t.Fatalf("dedupe: %v %v", got, err)
 	}

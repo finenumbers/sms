@@ -239,11 +239,6 @@ func (s *Service) Resolve(ctx context.Context, token string, ip *netip.Addr) (id
 }
 
 func normalizeScopes(in []string) ([]string, error) {
-	if len(in) == 0 {
-		out := make([]string, len(allScopes))
-		copy(out, allScopes)
-		return out, nil
-	}
 	allowed := make(map[string]struct{}, len(allScopes))
 	for _, s := range allScopes {
 		allowed[s] = struct{}{}

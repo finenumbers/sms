@@ -2408,7 +2408,7 @@ components:
           items:
             type: string
             enum: [sms:send, sms:read, campaigns:write, lookup:write, lookup:read]
-          description: Empty copies all current scopes; existing keys stay opt-in for lookup
+          description: At least one scope is required. Existing keys are unchanged.
         allowed_cidrs:
           type: array
           items:

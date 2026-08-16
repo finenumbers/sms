@@ -381,7 +381,7 @@ func (q *Queries) ClaimQueuedLookupItemsFair(ctx context.Context, arg ClaimQueue
 
 const claimReservedLookupItemsFair = `-- name: ClaimReservedLookupItemsFair :many
 UPDATE lookup_items AS i
-SET status = status
+SET updated_at = now()
 WHERE i.id IN (
     SELECT j.id
     FROM (
@@ -389,7 +389,7 @@ WHERE i.id IN (
         FROM lookup_items i
         JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
         WHERE i.status = 'reserved'
-          AND i.updated_at <= now() - interval '5 seconds'
+          AND i.updated_at <= now() - interval '20 seconds'
         GROUP BY i.client_id
         ORDER BY MIN(i.updated_at)
         LIMIT $1
@@ -400,7 +400,7 @@ WHERE i.id IN (
         JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
         WHERE i.client_id IS NOT DISTINCT FROM c.client_id
           AND i.status = 'reserved'
-          AND i.updated_at <= now() - interval '5 seconds'
+          AND i.updated_at <= now() - interval '20 seconds'
         ORDER BY i.updated_at, i.id
         LIMIT $2
         FOR UPDATE OF i SKIP LOCKED
@@ -414,6 +414,7 @@ type ClaimReservedLookupItemsFairParams struct {
 	PerClient   int32 `json:"per_client"`
 }
 
+// 20s must exceed SMSC HTTP (15s); keep in sync with reservedReclaimAfter.
 func (q *Queries) ClaimReservedLookupItemsFair(ctx context.Context, arg ClaimReservedLookupItemsFairParams) ([]LookupItem, error) {
 	rows, err := q.db.Query(ctx, claimReservedLookupItemsFair, arg.ClientLimit, arg.PerClient)
 	if err != nil {
@@ -1478,7 +1479,7 @@ func (q *Queries) ListEmptyCsvLookupShells(ctx context.Context, arg ListEmptyCsv
 const listJobsNeedingFinalize = `-- name: ListJobsNeedingFinalize :many
 SELECT id, client_id, check_type, source, status, item_count, success_count, failure_count, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, original_filename, idempotency_key, created_by, api_credential_id, error_code, error_message, started_at, completed_at, metadata, created_at, updated_at, reachable_count, unreachable_count
 FROM lookup_jobs
-WHERE status = 'processing'
+WHERE status IN ('queued', 'processing')
   AND item_count > 0
   AND item_count = success_count + failure_count
 ORDER BY updated_at
@@ -2289,8 +2290,8 @@ const listStaleReservedLookupItems = `-- name: ListStaleReservedLookupItems :man
 SELECT id, job_id, client_id, check_type, status, phone_e164, phone_digits, provider_code, provider_message_id, unit_sell_price, tariff_plan_id, tariff_plan_code, currency, estimated_cost, actual_cost, result_status, is_reachable, imsi, mcc, mnc, operator_name, country_code, ported, roaming, normalized_result, error_code, error_message, billing_action, next_poll_at, poll_attempts, sent_at, completed_at, created_at, updated_at, enrich_attempts
 FROM lookup_items
 WHERE status = 'reserved'
-  AND updated_at <= $1
-ORDER BY updated_at, id
+  AND created_at <= $1
+ORDER BY created_at, id
 LIMIT $2
 `
 

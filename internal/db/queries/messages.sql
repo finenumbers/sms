@@ -25,6 +25,7 @@ WHERE id = sqlc.arg(id) AND client_id = sqlc.arg(client_id)::uuid;
 SELECT * FROM sms_messages
 WHERE client_id = sqlc.arg(client_id)::uuid
   AND (sqlc.narg('direction')::sms_direction IS NULL OR direction = sqlc.narg('direction'))
+  AND (NOT sqlc.arg(only_direct)::boolean OR campaign_id IS NULL)
 ORDER BY created_at DESC
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 

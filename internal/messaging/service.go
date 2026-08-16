@@ -198,9 +198,10 @@ func (s *Service) GetForClient(ctx context.Context, clientID, id uuid.UUID) (sql
 }
 
 type ListFilter struct {
-	Direction *sqlcdb.SmsDirection
-	Limit     int32
-	Offset    int32
+	Direction  *sqlcdb.SmsDirection
+	OnlyDirect bool
+	Limit      int32
+	Offset     int32
 }
 
 func (s *Service) ListForClient(ctx context.Context, clientID uuid.UUID, f ListFilter) ([]sqlcdb.SmsMessage, error) {
@@ -213,6 +214,7 @@ func (s *Service) ListForClient(ctx context.Context, clientID uuid.UUID, f ListF
 	}
 	arg := sqlcdb.ListSmsMessagesForClientParams{
 		ClientID:   clientID,
+		OnlyDirect: f.OnlyDirect,
 		PageLimit:  limit,
 		PageOffset: offset,
 	}

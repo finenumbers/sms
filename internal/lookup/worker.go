@@ -27,6 +27,8 @@ const (
 	tickBudget      = 150 * time.Millisecond
 	minHTTPBudget   = 20 * time.Millisecond
 	smscCallTimeout = smsc.DefaultHTTPTimeout
+	// Must exceed smscCallTimeout so api+worker cannot both HTTP the same reserved item.
+	reservedReclaimAfter = 20 * time.Second
 	reconcileEvery  = 15 * time.Second
 	csvShellAge     = 5 * time.Minute
 	// Must outlive Create's statement_timeout. Heal-to-ready while Create
@@ -214,34 +216,32 @@ func (w *Worker) submit(ctx context.Context, deadline time.Time) (int, error) {
 	if !view.LookupEnabled {
 		return 0, nil
 	}
-	per := int32(SubmitBatchSize / fairClients)
-	if per < 1 {
-		per = 1
+	if !canStartLookupIO(w.now(), deadline) {
+		return 0, nil
 	}
 	queued, err := w.store.Queries.ClaimQueuedLookupItemsFair(ctx, sqlcdb.ClaimQueuedLookupItemsFairParams{
-		ClientLimit: fairClients,
-		PerClient:   per,
+		ClientLimit: 1,
+		PerClient:   1,
 	})
 	if err != nil {
 		return 0, err
 	}
-	reserved, err := w.store.Queries.ClaimReservedLookupItemsFair(ctx, sqlcdb.ClaimReservedLookupItemsFairParams{
-		ClientLimit: fairClients,
-		PerClient:   per,
-	})
-	if err != nil {
-		return 0, err
-	}
-	items := append(queued, reserved...)
-	n := 0
-	for i := range items {
-		if !canStartLookupIO(w.now(), deadline) {
-			break
+	items := queued
+	if len(items) == 0 {
+		reserved, err := w.store.Queries.ClaimReservedLookupItemsFair(ctx, sqlcdb.ClaimReservedLookupItemsFairParams{
+			ClientLimit: 1,
+			PerClient:   1,
+		})
+		if err != nil {
+			return 0, err
 		}
-		w.submitItem(ctx, items[i], view, deadline)
-		n++
+		items = reserved
 	}
-	return n, nil
+	if len(items) == 0 {
+		return 0, nil
+	}
+	w.submitItem(ctx, items[0], view, deadline)
+	return 1, nil
 }
 
 func (w *Worker) submitItem(ctx context.Context, item sqlcdb.LookupItem, view settings.Public, deadline time.Time) {
@@ -828,14 +828,14 @@ func (w *Worker) reconcile(ctx context.Context) error {
 		})
 	}
 
+	timeout := time.Duration(view.LookupCheckTimeoutSec) * time.Second
 	staleReserved, err := w.store.Queries.ListStaleReservedLookupItems(ctx, sqlcdb.ListStaleReservedLookupItemsParams{
-		OlderThan: older,
+		OlderThan: w.now().Add(-timeout),
 		PageLimit: 100,
 	})
 	if err != nil {
 		return err
 	}
-	timeout := time.Duration(view.LookupCheckTimeoutSec) * time.Second
 	for i := range staleReserved {
 		item := staleReserved[i]
 		if w.now().Sub(item.CreatedAt) >= timeout {

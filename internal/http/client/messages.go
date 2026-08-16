@@ -100,6 +100,9 @@ func (h *Handlers) ListMessages(w http.ResponseWriter, r *http.Request) {
 		}
 		f.Direction = &d
 	}
+	if raw := r.URL.Query().Get("only_direct"); raw == "true" || raw == "1" {
+		f.OnlyDirect = true
+	}
 	items, err := h.Messages.ListForClient(r.Context(), *p.ClientID, f)
 	if err != nil {
 		h.Log.Error("list messages", "err", err)

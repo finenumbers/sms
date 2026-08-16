@@ -98,8 +98,9 @@ WHERE id = sqlc.arg(id)
   AND (provider_message_id IS NULL OR provider_message_id = '');
 
 -- name: ClaimReservedLookupItemsFair :many
+-- 20s must exceed SMSC HTTP (15s); keep in sync with reservedReclaimAfter.
 UPDATE lookup_items AS i
-SET status = status
+SET updated_at = now()
 WHERE i.id IN (
     SELECT j.id
     FROM (
@@ -107,7 +108,7 @@ WHERE i.id IN (
         FROM lookup_items i
         JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
         WHERE i.status = 'reserved'
-          AND i.updated_at <= now() - interval '5 seconds'
+          AND i.updated_at <= now() - interval '20 seconds'
         GROUP BY i.client_id
         ORDER BY MIN(i.updated_at)
         LIMIT sqlc.arg(client_limit)
@@ -118,7 +119,7 @@ WHERE i.id IN (
         JOIN clients cl ON cl.id = i.client_id AND cl.status = 'active'
         WHERE i.client_id IS NOT DISTINCT FROM c.client_id
           AND i.status = 'reserved'
-          AND i.updated_at <= now() - interval '5 seconds'
+          AND i.updated_at <= now() - interval '20 seconds'
         ORDER BY i.updated_at, i.id
         LIMIT sqlc.arg(per_client)
         FOR UPDATE OF i SKIP LOCKED
@@ -316,14 +317,14 @@ LIMIT sqlc.arg(page_limit);
 SELECT *
 FROM lookup_items
 WHERE status = 'reserved'
-  AND updated_at <= sqlc.arg(older_than)
-ORDER BY updated_at, id
+  AND created_at <= sqlc.arg(older_than)
+ORDER BY created_at, id
 LIMIT sqlc.arg(page_limit);
 
 -- name: ListJobsNeedingFinalize :many
 SELECT *
 FROM lookup_jobs
-WHERE status = 'processing'
+WHERE status IN ('queued', 'processing')
   AND item_count > 0
   AND item_count = success_count + failure_count
 ORDER BY updated_at

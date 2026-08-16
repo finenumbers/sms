@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, InvalidList, PAGE_SIZE, PageHeader, Pager, Table, Td, Textarea, Th, pollStatus, statusTone, withPage, formatMoney } from "ui";
-import { api, type Campaign, type Recipient } from "../api";
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, InvalidList, PAGE_SIZE, PageHeader, Pager, Table, Td, Textarea, Th, cn, pollStatus, statusTone, withPage, formatMoney } from "ui";
+import { api, type Campaign, type Message, type Recipient } from "../api";
+import { MessageDetailSheet } from "./MessageDetailSheet";
 
 type RecipientReport = {
   added: number;
@@ -12,10 +13,27 @@ type RecipientReport = {
   invalid?: { line?: number; value?: string; error: string }[];
 };
 
+function recipientMessageSeed(c: Campaign, r: Recipient): Message | null {
+  if (!r.message_id) {
+    return null;
+  }
+  return {
+    id: r.message_id,
+    direction: "outbound",
+    from: c.from,
+    to: r.to,
+    text: c.text,
+    status: r.message_status ?? "queued",
+    created_at: r.created_at,
+  };
+}
+
 export function CampaignDetailPage() {
   const { id = "" } = useParams();
   const qc = useQueryClient();
   const [offset, setOffset] = useState(0);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<Message | null>(null);
   const q = useQuery({
     queryKey: ["campaign", id],
     queryFn: () => api.get<Campaign>(`/campaigns/${id}`),
@@ -34,6 +52,16 @@ export function CampaignDetailPage() {
       ),
     enabled: Boolean(q.data && q.data.status === "draft"),
   });
+  const recItems = rec.data?.items ?? [];
+  const selected = recItems.find((r) => r.message_id === selectedMessageId);
+  const seed = (q.data && selected ? recipientMessageSeed(q.data, selected) : null) ?? snapshot;
+  const detail = useQuery({
+    queryKey: ["message", selectedMessageId],
+    queryFn: () => api.get<Message>(`/messages/${selectedMessageId}`),
+    enabled: Boolean(selectedMessageId),
+    refetchInterval: pollStatus<Message>(),
+  });
+  const message = detail.data ?? seed ?? null;
   const [list, setList] = useState("");
   const [from, setFrom] = useState("");
   const [text, setText] = useState("");
@@ -96,7 +124,7 @@ export function CampaignDetailPage() {
   const c = q.data;
   const draft = c.status === "draft";
   const running = c.status === "queued" || c.status === "running";
-  const items = rec.data?.items ?? [];
+  const items = recItems;
   return (
     <div>
       <PageHeader
@@ -209,20 +237,49 @@ export function CampaignDetailPage() {
           </tr>
         </thead>
         <tbody>
-          {items.map((r) => (
-            <tr key={r.id}>
-              <Td fit>
-                <code>{r.to}</code>
-              </Td>
-              <Td fit>
-                <Badge tone={statusTone(r.message_status ?? r.status)}>{r.message_status ?? r.status}</Badge>
-              </Td>
-            </tr>
-          ))}
+          {items.map((r) => {
+            const openable = Boolean(r.message_id);
+            return (
+              <tr
+                key={r.id}
+                className={cn(
+                  openable && "cursor-pointer hover:bg-zinc-50",
+                  openable && selectedMessageId === r.message_id && "bg-zinc-100 hover:bg-zinc-100",
+                )}
+                onClick={() => {
+                  if (!r.message_id) {
+                    return;
+                  }
+                  const next = recipientMessageSeed(c, r);
+                  setSelectedMessageId(r.message_id);
+                  setSnapshot(next);
+                }}
+              >
+                <Td fit>
+                  <code>{r.to}</code>
+                </Td>
+                <Td fit>
+                  <Badge tone={statusTone(r.message_status ?? r.status)}>{r.message_status ?? r.status}</Badge>
+                </Td>
+              </tr>
+            );
+          })}
         </tbody>
       </Table>
       {!rec.isLoading && items.length === 0 ? <EmptyState>Получателей нет</EmptyState> : null}
       <Pager offset={offset} limit={PAGE_SIZE} count={items.length} onChange={setOffset} />
+      <MessageDetailSheet
+        open={selectedMessageId != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedMessageId(null);
+            setSnapshot(null);
+          }
+        }}
+        message={message}
+        loading={detail.isFetching && !message}
+        error={detail.isError ? detail.error : undefined}
+      />
     </div>
   );
 }

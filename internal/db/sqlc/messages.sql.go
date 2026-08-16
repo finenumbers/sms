@@ -361,13 +361,15 @@ const listSmsMessagesForClient = `-- name: ListSmsMessagesForClient :many
 SELECT id, client_id, direction, from_msisdn, to_msisdn, text, provider, provider_sms_id, provider_status, pdu_count, campaign_id, status, idempotency_key, created_at, accepted_at, sent_at, delivered_at, failed_at, unit_sell_price, billed_segments, tariff_plan_id, tariff_plan_code, currency, billing_action FROM sms_messages
 WHERE client_id = $1::uuid
   AND ($2::sms_direction IS NULL OR direction = $2)
+  AND (NOT $3::boolean OR campaign_id IS NULL)
 ORDER BY created_at DESC
-LIMIT $4 OFFSET $3
+LIMIT $5 OFFSET $4
 `
 
 type ListSmsMessagesForClientParams struct {
 	ClientID   uuid.UUID        `json:"client_id"`
 	Direction  NullSmsDirection `json:"direction"`
+	OnlyDirect bool             `json:"only_direct"`
 	PageOffset int32            `json:"page_offset"`
 	PageLimit  int32            `json:"page_limit"`
 }
@@ -376,6 +378,7 @@ func (q *Queries) ListSmsMessagesForClient(ctx context.Context, arg ListSmsMessa
 	rows, err := q.db.Query(ctx, listSmsMessagesForClient,
 		arg.ClientID,
 		arg.Direction,
+		arg.OnlyDirect,
 		arg.PageOffset,
 		arg.PageLimit,
 	)

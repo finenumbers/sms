@@ -71,6 +71,12 @@ func TestLookupIOContextUsesAdapterTimeout(t *testing.T) {
 	}
 }
 
+func TestReservedReclaimOutlivesSMSCHTTP(t *testing.T) {
+	if reservedReclaimAfter <= smscCallTimeout {
+		t.Fatalf("reserved reclaim %s must exceed SMSC HTTP %s", reservedReclaimAfter, smscCallTimeout)
+	}
+}
+
 func TestLookupIOContextCapsWorkerCallsOnly(t *testing.T) {
 	parent, cancel := context.WithCancel(context.Background())
 	defer cancel()

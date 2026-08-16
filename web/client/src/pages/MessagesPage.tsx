@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, cn, pollStatus, statusTone, withPage, formatDateTime, formatMoney } from "ui";
 import { api, type Estimate, type Message, type NumberOpt } from "../api";
-import { MessageDetailSheet, smsInflight } from "./MessageDetailSheet";
+import { MessageDetailSheet } from "./MessageDetailSheet";
 
 export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
   const qc = useQueryClient();
@@ -11,10 +11,14 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
   const [snapshot, setSnapshot] = useState<Message | null>(null);
   const numbers = useQuery({ queryKey: ["numbers"], queryFn: () => api.get<{ items: NumberOpt[] }>("/numbers") });
   const list = useQuery({
-    queryKey: ["messages", inbound ? "in" : "all", offset],
+    queryKey: ["messages", inbound ? "in" : "out", offset],
     queryFn: () =>
       api.get<{ items: Message[] }>(
-        withPage("/messages", offset, inbound ? { direction: "inbound" } : {}),
+        withPage(
+          "/messages",
+          offset,
+          inbound ? { direction: "inbound" } : { direction: "outbound", only_direct: "true" },
+        ),
       ),
     refetchInterval: 4000,
   });
@@ -41,7 +45,7 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
   const detail = useQuery({
     queryKey: ["message", selectedId],
     queryFn: () => api.get<Message>(`/messages/${selectedId}`),
-    enabled: Boolean(selectedId) && smsInflight.has(seed?.status ?? ""),
+    enabled: Boolean(selectedId),
     refetchInterval: pollStatus<Message>(),
   });
   const message = detail.data ?? seed ?? null;
@@ -126,7 +130,7 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
           ))}
         </tbody>
       </Table>
-      {!list.isLoading && items.length === 0 ? <EmptyState>{inbound ? "Входящих нет" : "Сообщений нет"}</EmptyState> : null}
+      {!list.isLoading && items.length === 0 ? <EmptyState>{inbound ? "Входящих нет" : "Исходящих нет"}</EmptyState> : null}
       <Pager offset={offset} limit={PAGE_SIZE} count={items.length} onChange={setOffset} />
       <MessageDetailSheet
         open={selectedId != null}

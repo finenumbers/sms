@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, statusTone, withPage, formatDateTime, formatMoney } from "ui";
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PAGE_SIZE, PageHeader, Pager, Select, Table, Td, Textarea, Th, cn, pollStatus, statusTone, withPage, formatDateTime, formatMoney } from "ui";
 import { api, type Estimate, type Message, type NumberOpt } from "../api";
+import { MessageDetailSheet, smsInflight } from "./MessageDetailSheet";
 
 export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
   const qc = useQueryClient();
   const [offset, setOffset] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<Message | null>(null);
   const numbers = useQuery({ queryKey: ["numbers"], queryFn: () => api.get<{ items: NumberOpt[] }>("/numbers") });
   const list = useQuery({
     queryKey: ["messages", inbound ? "in" : "all", offset],
@@ -34,6 +36,15 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
     enabled: to.length >= 11 && text.trim().length > 0,
   });
   const items = list.data?.items ?? [];
+  const row = items.find((m) => m.id === selectedId);
+  const seed = row ?? snapshot;
+  const detail = useQuery({
+    queryKey: ["message", selectedId],
+    queryFn: () => api.get<Message>(`/messages/${selectedId}`),
+    enabled: Boolean(selectedId) && smsInflight.has(seed?.status ?? ""),
+    refetchInterval: pollStatus<Message>(),
+  });
+  const message = detail.data ?? seed ?? null;
 
   return (
     <div>
@@ -91,12 +102,15 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
         </thead>
         <tbody>
           {items.map((m) => (
-            <tr key={m.id}>
-              <Td fit>
-                <Link className="text-blue-700 hover:underline" to={`/messages/${m.id}`}>
-                  {formatDateTime(m.created_at)}
-                </Link>
-              </Td>
+            <tr
+              key={m.id}
+              className={cn("cursor-pointer hover:bg-zinc-50", selectedId === m.id && "bg-zinc-100 hover:bg-zinc-100")}
+              onClick={() => {
+                setSelectedId(m.id);
+                setSnapshot(m);
+              }}
+            >
+              <Td fit>{formatDateTime(m.created_at)}</Td>
               <Td fit>{m.direction === "inbound" ? "Входящая" : m.direction === "outbound" ? "Исходящая" : m.direction}</Td>
               <Td fit>
                 <code>{m.from}</code>
@@ -114,6 +128,18 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
       </Table>
       {!list.isLoading && items.length === 0 ? <EmptyState>{inbound ? "Входящих нет" : "Сообщений нет"}</EmptyState> : null}
       <Pager offset={offset} limit={PAGE_SIZE} count={items.length} onChange={setOffset} />
+      <MessageDetailSheet
+        open={selectedId != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedId(null);
+            setSnapshot(null);
+          }
+        }}
+        message={message}
+        loading={detail.isFetching && !message}
+        error={detail.isError ? detail.error : undefined}
+      />
     </div>
   );
 }

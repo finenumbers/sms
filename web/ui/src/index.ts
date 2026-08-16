@@ -26,4 +26,5 @@ export {
   type InvalidRow,
 } from "./components/ui";
 export { InfiniteSentinel } from "./components/InfiniteSentinel";
+export { Sheet } from "./components/sheet";
 export { LoginLayout, Shell, type NavItem } from "./components/shell";

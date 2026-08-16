@@ -18,8 +18,8 @@ export function ClientsPage() {
   const [ownerEmail, setOwnerEmail] = useState("");
   const [ownerPassword, setOwnerPassword] = useState("");
   const create = useMutation({
-    mutationFn: () =>
-      api.post("/clients", { name, owner_name: ownerName, owner_email: ownerEmail, owner_password: ownerPassword }),
+    mutationFn: (body: { name: string; owner_name: string; owner_email: string; owner_password: string }) =>
+      api.post("/clients", body),
     onSuccess: () => {
       setOpen(false);
       setName("");
@@ -64,20 +64,31 @@ export function ClientsPage() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              create.mutate();
+              const fd = new FormData(e.currentTarget);
+              const body = {
+                name: String(fd.get("name") ?? ""),
+                owner_name: String(fd.get("owner_name") ?? ""),
+                owner_email: String(fd.get("owner_email") ?? ""),
+                owner_password: String(fd.get("owner_password") ?? ""),
+              };
+              setName(body.name);
+              setOwnerName(body.owner_name);
+              setOwnerEmail(body.owner_email);
+              setOwnerPassword(body.owner_password);
+              create.mutate(body);
             }}
           >
             <Field label="Название">
-              <Input value={name} onChange={(e) => setName(e.target.value)} required />
+              <Input name="name" value={name} onChange={(e) => setName(e.target.value)} required />
             </Field>
             <Field label="ФИО владельца">
-              <Input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
+              <Input name="owner_name" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} required />
             </Field>
             <Field label="Эл. почта владельца">
-              <Input type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />
+              <Input name="owner_email" type="email" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} required />
             </Field>
             <Field label="Пароль владельца (мин. 10)">
-              <Input type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} minLength={10} required />
+              <Input name="owner_password" type="password" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} minLength={10} required />
             </Field>
             {create.isError ? <ErrorBox error={create.error} /> : null}
             <Button type="submit" disabled={create.isPending}>

@@ -35,10 +35,10 @@ func CanDisableActiveOwner(activeOwners int64) bool {
 func validateUserName(name string) (string, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
-		return "", fmt.Errorf("%w: name required", ErrValidation)
+		return "", fmt.Errorf("%w: owner name required", ErrValidation)
 	}
 	if utf8.RuneCountInString(name) > maxUserNameRunes {
-		return "", fmt.Errorf("%w: name too long", ErrValidation)
+		return "", fmt.Errorf("%w: owner name too long", ErrValidation)
 	}
 	return name, nil
 }

@@ -23,11 +23,11 @@ func TestValidateUserName(t *testing.T) {
 	if err != nil || got != "Иванов" {
 		t.Fatalf("%q %v", got, err)
 	}
-	if _, err := validateUserName("  "); err == nil {
-		t.Fatal("expected name required")
+	if _, err := validateUserName("  "); err == nil || !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected owner name required: %v", err)
 	}
-	if _, err := validateUserName(strings.Repeat("я", 121)); err == nil {
-		t.Fatal("expected name too long")
+	if _, err := validateUserName(strings.Repeat("я", 121)); err == nil || !errors.Is(err, ErrValidation) {
+		t.Fatalf("expected owner name too long: %v", err)
 	}
 }
 

@@ -13,8 +13,7 @@ export class ApiError extends Error {
 const errorByCode: Record<string, string> = {
   unauthorized: "Нужна авторизация",
   forbidden: "Недостаточно прав",
-  validation: "Проверьте поля запроса",
-  invalid_json: "Проверьте поля запроса",
+  invalid_json: "Некорректное тело запроса",
   not_assigned: "Номер не назначен этому клиенту",
   int_out_disabled: "Международные SMS выключены",
   rate_limited: "Слишком много запросов, подождите",
@@ -27,11 +26,31 @@ const errorByCode: Record<string, string> = {
   client_suspended: "Клиент заблокирован",
   invalid_tariff: "Тариф недействителен",
   negative_balance_forbidden: "Отрицательный баланс запрещён",
+  email_taken: "Email уже занят",
 };
 
+const validationByMessage: Record<string, string> = {
+  "name required": "Укажите название клиента",
+  "owner name required": "Укажите ФИО владельца",
+  "owner name too long": "ФИО слишком длинное",
+  "email required": "Укажите email",
+  "invalid email": "Некорректный email",
+  "password must be at least 10 characters": "Пароль не короче 10 символов",
+};
+
+function validationText(message: string): string {
+  const raw = message.replace(/^validation:\s*/i, "").trim();
+  return validationByMessage[raw] ?? (raw || "Проверьте поля запроса");
+}
+
 export function formatApiError(error: unknown): string {
-  if (error instanceof ApiError && errorByCode[error.code]) {
-    return errorByCode[error.code];
+  if (error instanceof ApiError) {
+    if (error.code === "validation") {
+      return validationText(error.message);
+    }
+    if (errorByCode[error.code]) {
+      return errorByCode[error.code];
+    }
   }
   if (error instanceof Error && error.message) {
     return error.message;

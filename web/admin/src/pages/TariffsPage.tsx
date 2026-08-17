@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th } from "ui";
-import { formatMoney } from "ui";
+import { Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, formatMoney, formatPriceInput, priceToApi } from "ui";
 import { api, type TariffPlan } from "../api";
 import { priceUnit, productLabel } from "../lookup";
 
@@ -21,7 +20,7 @@ export function TariffsPage() {
         code,
         name,
         product,
-        sell_price: price,
+        sell_price: priceToApi(price),
         currency: "RUB",
         is_active: true,
       }),
@@ -75,7 +74,12 @@ export function TariffsPage() {
             </Select>
           </Field>
           <Field label={`Цена ${priceUnit(product)}, RUB`}>
-            <Input value={price} onChange={(e) => setPrice(e.target.value)} required />
+            <Input
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              onBlur={() => setPrice((v) => formatPriceInput(v) || v)}
+              required
+            />
           </Field>
           {create.isError ? <ErrorBox error={create.error} /> : null}
           <Button type="button" onClick={() => create.mutate()} disabled={create.isPending}>
@@ -116,7 +120,7 @@ function TariffRow({
   pending: boolean;
 }) {
   const [name, setName] = useState(row.name);
-  const [price, setPrice] = useState(row.sell_price);
+  const [price, setPrice] = useState(formatPriceInput(row.sell_price));
   const [active, setActive] = useState(row.is_active);
   return (
     <tr>
@@ -128,7 +132,11 @@ function TariffRow({
       </Td>
       <Td>{productLabel[row.product] ?? row.product}</Td>
       <Td>
-        <Input value={price} onChange={(e) => setPrice(e.target.value)} />
+        <Input
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          onBlur={() => setPrice((v) => formatPriceInput(v) || v)}
+        />
         <div className="mt-1 text-xs text-zinc-500">
           {formatMoney(row.sell_price, row.currency)} {priceUnit(row.product)}
         </div>
@@ -144,7 +152,7 @@ function TariffRow({
           variant="secondary"
           type="button"
           disabled={pending}
-          onClick={() => onSave({ ...row, name, sell_price: price, is_active: active })}
+          onClick={() => onSave({ ...row, name, sell_price: priceToApi(price), is_active: active })}
         >
           Сохранить
         </Button>

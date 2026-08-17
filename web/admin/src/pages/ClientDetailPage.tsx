@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, statusTone, formatDateTime, formatMoney } from "ui";
+import { Alert, Badge, Button, Card, EmptyState, ErrorBox, Field, Input, PageHeader, Select, Table, Td, Th, cn, statusTone, formatDateTime, formatMoney } from "ui";
 import { api, type APIKey, type ClientBilling, type ClientDetail, type TariffPlan } from "../api";
 import { priceUnit, productLabel } from "../lookup";
 
@@ -398,7 +398,7 @@ export function ClientDetailPage() {
               return (
                 <div key={product} className="rounded-lg border border-zinc-200 p-3">
                   <div className="font-medium">Тариф {label}</div>
-                  <div className="mt-1 text-sm text-zinc-500">
+                  <div className={cn("mt-1 text-sm font-bold", current ? "text-green-700" : "text-red-700")}>
                     {current
                       ? `${current.plan_name} — ${formatMoney(current.sell_price, current.currency)} ${priceUnit(product)}${current.is_active === false ? " · план неактивен" : ""}`
                       : "Не назначен"}
@@ -481,14 +481,16 @@ export function ClientDetailPage() {
             Секрет показывается один раз: <code className="break-all text-xs">{createdToken}</code>
           </Alert>
         ) : null}
-        <div className="mt-3 grid gap-3 md:grid-cols-3">
-          <Field label="Имя">
-            <Input value={keyName} onChange={(e) => setKeyName(e.target.value)} />
-          </Field>
-          <Field label="CIDR (пусто = любой IP)">
-            <Input value={cidrs} onChange={(e) => setCidrs(e.target.value)} placeholder="203.0.113.0/24" />
-          </Field>
-          <div className="md:col-span-3 mb-3 flex flex-wrap gap-3 text-sm">
+        <div className="mt-3">
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Имя">
+              <Input value={keyName} onChange={(e) => setKeyName(e.target.value)} />
+            </Field>
+            <Field label="CIDR (пусто = любой IP)">
+              <Input value={cidrs} onChange={(e) => setCidrs(e.target.value)} placeholder="203.0.113.0/24" />
+            </Field>
+          </div>
+          <div className="mb-3 flex flex-wrap gap-3 text-sm">
             {allScopes.map((s) => (
               <label key={s} className="flex items-center gap-2">
                 <input
@@ -502,11 +504,9 @@ export function ClientDetailPage() {
               </label>
             ))}
           </div>
-          <div className="flex items-end">
-            <Button type="button" onClick={() => createKey.mutate()} disabled={createKey.isPending || scopes.length === 0}>
-              Выпустить ключ
-            </Button>
-          </div>
+          <Button type="button" onClick={() => createKey.mutate()} disabled={createKey.isPending || scopes.length === 0}>
+            Выпустить ключ
+          </Button>
         </div>
         {createKey.isError ? <ErrorBox error={createKey.error} /> : null}
         <Table>

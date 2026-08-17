@@ -156,7 +156,7 @@ export function CampaignDetailPage() {
         ) : (
           <>
             <p className="text-sm">
-              Откуда <code>{c.from}</code>
+              Отправитель <code>{c.from}</code>
             </p>
             <p className="mt-2 whitespace-pre-wrap text-sm">{c.text}</p>
           </>
@@ -232,7 +232,7 @@ export function CampaignDetailPage() {
       <Table>
         <thead>
           <tr>
-            <Th fit>Куда</Th>
+            <Th fit>Получатель</Th>
             <Th fit>Статус</Th>
           </tr>
         </thead>

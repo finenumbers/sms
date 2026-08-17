@@ -98,8 +98,8 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
           <tr>
             <Th fit>Время</Th>
             <Th fit>Направление</Th>
-            <Th fit>Откуда</Th>
-            <Th fit>Куда</Th>
+            <Th fit>Отправитель</Th>
+            <Th fit>Получатель</Th>
             <Th fit>Статус</Th>
             <Th fluid>Текст</Th>
           </tr>

@@ -59,7 +59,7 @@ export function CampaignsPage() {
         <thead>
           <tr>
             <Th fit>Создана</Th>
-            <Th fit>Откуда</Th>
+            <Th fit>Отправитель</Th>
             <Th fit>Статус</Th>
             <Th fit>Всего</Th>
             <Th fit>Доставлено</Th>

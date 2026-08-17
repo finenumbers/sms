@@ -11,11 +11,11 @@ function MessageDetailBody({ m }: { m: Message }) {
         {smsInflight.has(m.status) ? <span className="ml-2 text-xs text-zinc-500">опрос каждые 2 с</span> : null}
       </div>
       <dl className="grid grid-cols-[7rem_1fr] gap-x-3 gap-y-2 text-sm">
-        <dt className="text-zinc-500">Откуда</dt>
+        <dt className="text-zinc-500">Отправитель</dt>
         <dd>
           <code>{m.from}</code>
         </dd>
-        <dt className="text-zinc-500">Куда</dt>
+        <dt className="text-zinc-500">Получатель</dt>
         <dd>
           <code>{m.to}</code>
         </dd>

@@ -69,9 +69,6 @@ export function WebhooksPage() {
   return (
     <div>
       <PageHeader title="Webhooks" />
-      <p className="mb-3 text-sm text-zinc-600">
-        События проверок HLR и Silent SMS. Пустой список событий — все. Секрет показывается только при создании и смене.
-      </p>
       <Card className="mb-4">
         <form
           onSubmit={(e) => {

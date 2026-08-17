@@ -62,7 +62,7 @@ export function MessagesPage({ inbound = false }: { inbound?: boolean }) {
             }}
           >
             <div className="grid md:grid-cols-2 md:gap-3">
-              <Field label="От (назначенный DEF)">
+              <Field label="От">
                 <Select value={from} onChange={(e) => setFrom(e.target.value)} required>
                   <option value="">выберите номер</option>
                   {(numbers.data?.items ?? []).map((n) => (

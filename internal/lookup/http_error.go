@@ -8,6 +8,20 @@ import (
 	"finenumbers/sms/internal/httpx"
 )
 
+type errorBody struct {
+	Error errorDetail `json:"error"`
+}
+
+type errorDetail struct {
+	Code           string   `json:"code"`
+	Message        string   `json:"message"`
+	RejectedPhones []string `json:"rejected_phones,omitempty"`
+}
+
+func writeLookupError(w http.ResponseWriter, status int, code, message string, phones []string) {
+	httpx.WriteJSON(w, status, errorBody{Error: errorDetail{Code: code, Message: message, RejectedPhones: phones}})
+}
+
 func WriteError(w http.ResponseWriter, err error) {
 	if httpx.WriteBillingError(w, err) {
 		return
@@ -16,7 +30,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	if errors.As(err, &le) {
 		switch {
 		case errors.Is(le.Err, ErrValidation), le.Code == "validation":
-			httpx.WriteError(w, http.StatusBadRequest, "validation", le.Message)
+			writeLookupError(w, http.StatusBadRequest, "validation", le.Message, le.RejectedPhones)
 		case errors.Is(le.Err, ErrLookupDisabled), le.Code == "lookup_disabled":
 			httpx.WriteError(w, http.StatusForbidden, "lookup_disabled", le.Message)
 		case errors.Is(le.Err, ErrClientSuspended), le.Code == "client_suspended":

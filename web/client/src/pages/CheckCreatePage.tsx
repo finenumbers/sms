@@ -16,7 +16,7 @@ import {
   withPage,
 } from "ui";
 import { api, type LookupCheckType, type LookupEstimate, type LookupJob, type LookupPreview } from "../api";
-import { lookupError, parsePhoneList, typeLabel } from "../lookup";
+import { lookupError, lookupRejectedPhones, parsePhoneList, typeLabel } from "../lookup";
 
 type PreviewPhone = { phone: string; line: number };
 
@@ -159,6 +159,16 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
   const est = preview ? csvEstimate : estimate;
   const pending = submitSingle.isPending || submitList.isPending || submitCSV.isPending || upload.isPending;
   const actionError = submitSingle.error ?? submitList.error ?? submitCSV.error ?? upload.error ?? est.error;
+  const rejectedPhones = lookupRejectedPhones(actionError);
+  const rejectedText = rejectedPhones.join("\n");
+
+  function removeRejectedFromList() {
+    if (preview || rejectedPhones.length === 0) {
+      return;
+    }
+    const bad = new Set(rejectedPhones);
+    setList(phones.filter((p) => !bad.has(p)).join("\n"));
+  }
 
   return (
     <div>
@@ -239,7 +249,38 @@ export function CheckCreatePage({ type }: { type: LookupCheckType }) {
             {preview ? ` · ${preview.phone_count} номеров в файле` : null}
           </p>
         ) : null}
-        {actionError ? <Alert className="mb-3">{lookupError(actionError)}</Alert> : null}
+        {actionError ? (
+          <Alert className="mb-3">
+            <div>{lookupError(actionError)}</div>
+            {rejectedPhones.length > 0 ? (
+              <div className="mt-2">
+                <p className="mb-1">{rejectedPhones.length} номеров не проходят фильтр</p>
+                <Textarea
+                  readOnly
+                  value={rejectedText}
+                  rows={Math.min(8, Math.max(3, rejectedPhones.length))}
+                  className="max-h-48 resize-y bg-white font-mono text-xs"
+                />
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      void navigator.clipboard.writeText(rejectedText);
+                    }}
+                  >
+                    Скопировать
+                  </Button>
+                  {!preview && list.trim() !== "" ? (
+                    <Button type="button" disabled={pending} onClick={removeRejectedFromList}>
+                      Убрать из списка
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </Alert>
+        ) : null}
         <div className="flex flex-wrap gap-2">
           <Button
             type="button"

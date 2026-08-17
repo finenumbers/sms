@@ -52,9 +52,19 @@ func TestPreparePhonesRejectsNon79(t *testing.T) {
 	if err == nil || AsError(err) == nil || AsError(err).Message != RUMobile79RequiredMessage {
 		t.Fatalf("landline: %v", err)
 	}
-	_, _, err = PreparePhones([]string{"+79001234567", "+74951234567"}, "bulk", 1000, "")
+	if got := AsError(err).RejectedPhones; len(got) != 1 || got[0] != "+74951234567" {
+		t.Fatalf("landline rejected %#v", got)
+	}
+	_, _, err = PreparePhones([]string{"+79001234567", "74951234567"}, "bulk", 1000, "")
 	if err == nil {
 		t.Fatal("mixed list must fail entirely")
+	}
+	le := AsError(err)
+	if le == nil || le.Message != RUMobile79RequiredMessage {
+		t.Fatalf("mixed message: %v", err)
+	}
+	if len(le.RejectedPhones) != 1 || le.RejectedPhones[0] != "74951234567" {
+		t.Fatalf("mixed rejected %#v", le.RejectedPhones)
 	}
 	_, _, err = PreparePhones([]string{"+77001234567"}, "bulk", 1000, "")
 	if err == nil {
@@ -67,6 +77,33 @@ func TestPreparePhonesRejectsNon79(t *testing.T) {
 	_, _, err = PreparePhones([]string{"+79001234567", "+79007654321"}, "single", 1000, "")
 	if err == nil {
 		t.Fatal("single requires one")
+	}
+}
+
+func TestPreparePhonesRejectedOriginalsAndInvalid(t *testing.T) {
+	_, _, err := PreparePhones([]string{"74951234567", "+74951234567", "74951234567"}, "bulk", 1000, "")
+	le := AsError(err)
+	if le == nil || le.Message != RUMobile79RequiredMessage {
+		t.Fatalf("message: %v", err)
+	}
+	if len(le.RejectedPhones) != 2 || le.RejectedPhones[0] != "74951234567" || le.RejectedPhones[1] != "+74951234567" {
+		t.Fatalf("originals %#v", le.RejectedPhones)
+	}
+	_, _, err = PreparePhones([]string{"+79001234567", "not-a-phone", "74951234567"}, "bulk", 1000, "")
+	le = AsError(err)
+	if le == nil || le.Message != RUMobile79RequiredMessage {
+		t.Fatalf("mixed invalid+non79 message: %v", err)
+	}
+	if len(le.RejectedPhones) != 2 || le.RejectedPhones[0] != "not-a-phone" || le.RejectedPhones[1] != "74951234567" {
+		t.Fatalf("mixed invalid+non79 %#v", le.RejectedPhones)
+	}
+	_, _, err = PreparePhones([]string{"+79001234567", "abc"}, "bulk", 1000, "")
+	le = AsError(err)
+	if le == nil || le.Message != "One or more phone numbers are invalid" {
+		t.Fatalf("invalid only: %v", err)
+	}
+	if len(le.RejectedPhones) != 1 || le.RejectedPhones[0] != "abc" {
+		t.Fatalf("invalid rejected %#v", le.RejectedPhones)
 	}
 }
 

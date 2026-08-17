@@ -1,12 +1,14 @@
 export class ApiError extends Error {
   status: number;
   code: string;
+  rejectedPhones?: string[];
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, rejectedPhones?: string[]) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.rejectedPhones = rejectedPhones;
   }
 }
 
@@ -85,11 +87,15 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const res = await fetch(path, { ...init, credentials: "include", headers });
   const data = await parseBody(res);
   if (!res.ok) {
-    const err = (data ?? {}) as { error?: { code?: string; message?: string } };
+    const err = (data ?? {}) as { error?: { code?: string; message?: string; rejected_phones?: unknown } };
+    const rejected = Array.isArray(err.error?.rejected_phones)
+      ? err.error.rejected_phones.filter((p): p is string => typeof p === "string")
+      : undefined;
     throw new ApiError(
       res.status,
       err.error?.code ?? "error",
       err.error?.message ?? res.statusText,
+      rejected?.length ? rejected : undefined,
     );
   }
   return data as T;

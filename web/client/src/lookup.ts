@@ -48,6 +48,13 @@ export function lookupError(error: unknown): string {
   return formatApiError(error);
 }
 
+export function lookupRejectedPhones(error: unknown): string[] {
+  if (error instanceof ApiError && error.rejectedPhones?.length) {
+    return error.rejectedPhones;
+  }
+  return [];
+}
+
 export function parsePhoneList(raw: string): string[] {
   return raw
     .split(/[\s,;]+/)

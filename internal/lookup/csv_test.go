@@ -59,6 +59,21 @@ func TestWriteErrorLookupDisabled(t *testing.T) {
 	}
 }
 
+func TestWriteErrorRejectedPhones(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteError(rec, wrapRejected(ErrValidation, "validation", RUMobile79RequiredMessage, []string{"74951234567", "+77001234567"}))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status %d", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, `"rejected_phones":["74951234567","+77001234567"]`) {
+		t.Fatalf("body %s", body)
+	}
+	if !strings.Contains(body, RUMobile79RequiredMessage) {
+		t.Fatalf("missing message %s", body)
+	}
+}
+
 func TestExportHeadersAndRow(t *testing.T) {
 	headers := ExportHeaders(sqlcdb.LookupCheckTypeHlr)
 	if len(headers) != 14 {

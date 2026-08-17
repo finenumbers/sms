@@ -13,6 +13,8 @@ type NormalizeResult struct {
 	Phones            []string
 	DeduplicatedCount int
 	Invalid           []InvalidPhone
+	Rejected          []string
+	HasNon79          bool
 }
 
 type InvalidPhone struct {
@@ -66,8 +68,10 @@ func NormalizePhoneE164(input string) (string, error) {
 
 func NormalizeAndDeduplicate(inputs []string) NormalizeResult {
 	out := NormalizeResult{}
-	seen := map[string]struct{}{}
+	seenE164 := map[string]struct{}{}
+	seenOrig := map[string]struct{}{}
 	for _, input := range inputs {
+		trimmed := strings.TrimSpace(input)
 		e164, err := NormalizePhoneE164(input)
 		if err != nil {
 			reason := "Invalid phone number"
@@ -75,16 +79,32 @@ func NormalizeAndDeduplicate(inputs []string) NormalizeResult {
 				reason = e.Message
 			}
 			out.Invalid = append(out.Invalid, InvalidPhone{Input: input, Reason: reason})
+			out.Rejected = appendUniqueToken(out.Rejected, seenOrig, trimmed)
 			continue
 		}
-		if _, ok := seen[e164]; ok {
+		if !IsRUMobile79(e164) {
+			out.HasNon79 = true
+			out.Rejected = appendUniqueToken(out.Rejected, seenOrig, trimmed)
+		}
+		if _, ok := seenE164[e164]; ok {
 			out.DeduplicatedCount++
 			continue
 		}
-		seen[e164] = struct{}{}
+		seenE164[e164] = struct{}{}
 		out.Phones = append(out.Phones, e164)
 	}
 	return out
+}
+
+func appendUniqueToken(dst []string, seen map[string]struct{}, token string) []string {
+	if token == "" {
+		return dst
+	}
+	if _, ok := seen[token]; ok {
+		return dst
+	}
+	seen[token] = struct{}{}
+	return append(dst, token)
 }
 
 func phoneCapLabel(name string) string {
@@ -99,14 +119,15 @@ func PreparePhones(inputs []string, source string, maxPhones int, capName string
 		return nil, 0, wrap(ErrValidation, "validation", "phones must be a non-empty array")
 	}
 	norm := NormalizeAndDeduplicate(inputs)
-	if len(norm.Invalid) > 0 {
-		return nil, 0, wrap(ErrValidation, "validation", "One or more phone numbers are invalid")
+	if len(norm.Invalid) > 0 || norm.HasNon79 {
+		msg := "One or more phone numbers are invalid"
+		if norm.HasNon79 {
+			msg = RUMobile79RequiredMessage
+		}
+		return nil, 0, wrapRejected(ErrValidation, "validation", msg, norm.Rejected)
 	}
 	if len(norm.Phones) == 0 {
 		return nil, 0, wrap(ErrValidation, "validation", "No valid phone numbers after normalization")
-	}
-	if CountNonRUMobile79(norm.Phones) > 0 {
-		return nil, 0, wrap(ErrValidation, "validation", RUMobile79RequiredMessage)
 	}
 	if maxPhones > 0 && len(norm.Phones) > maxPhones {
 		return nil, 0, wrap(ErrValidation, "validation", "Phone count exceeds "+phoneCapLabel(capName))

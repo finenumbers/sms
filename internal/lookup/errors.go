@@ -14,9 +14,10 @@ var (
 )
 
 type Error struct {
-	Code    string
-	Message string
-	Err     error
+	Code           string
+	Message        string
+	Err            error
+	RejectedPhones []string
 }
 
 func (e *Error) Error() string {
@@ -41,6 +42,10 @@ func (e *Error) Unwrap() error {
 
 func wrap(err error, code, msg string) error {
 	return &Error{Code: code, Message: msg, Err: err}
+}
+
+func wrapRejected(err error, code, msg string, phones []string) error {
+	return &Error{Code: code, Message: msg, Err: err, RejectedPhones: phones}
 }
 
 func AsError(err error) *Error {

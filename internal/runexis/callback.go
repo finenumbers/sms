@@ -9,9 +9,9 @@ import (
 )
 
 // Callback is a normalized DLR or MO payload.
-// Live DLR (2026-08-14) has id + message_status, not statistic sent/delivered.
-// message_status=2 → sent only; delivered stays statistic until Runexis
-// documents the enum (support ticket open). Do not invent other codes.
+// Live DLR has id + message_status. Vendor enum (support 2026-08-19):
+// 0, 2 → delivered; 1, 3 → failed. Other codes stay in Status only.
+// Match on id, not jmx_id. Do not map dlvrd/sub/level/err/id_smsc.
 type Callback struct {
 	SMSID     string `json:"sms_id,omitempty"`
 	From      string `json:"sender_number,omitempty"`
@@ -140,12 +140,15 @@ func callbackFromMap(m map[string]any) (Callback, bool) {
 		PDU:       firstInt(m, "pdu"),
 	}
 	if n, ok := firstIntOK(m, "message_status"); ok {
-		if row.Status == "" {
-			row.Status = strconv.Itoa(n)
-		}
-		// Observed live: 2 on a later-delivered SMS. Not proven as "delivered".
-		if n == 2 {
+		row.Status = strconv.Itoa(n)
+		switch n {
+		case 0, 2:
+			row.Delivered = true
 			row.Sent = true
+			row.Failed = false
+		case 1, 3:
+			row.Failed = true
+			row.Delivered = false
 		}
 	}
 	if row.SMSID == "" && row.From == "" && row.To == "" && row.Text == "" && row.Status == "" && !row.Sent && !row.Delivered && !row.Failed {

@@ -17,9 +17,9 @@ Source of truth for `internal/runexis` marshalers. No real credentials or produc
 | `numbers_management_response.json` | Vendor HTML example (`GET /api/v1/numbers/management`) |
 | `sms_account_response.json` | Vendor HTML example (`GET /numbers/{n}/sms/account`) |
 | `error_400.json` | Vendor error envelope |
-| `dlr_callback.json` | Live DLR POST 2026-08-14 (`id` + `message_status: 2`). Parser: `2` → sent, not delivered, until vendor enum |
+| `dlr_callback.json` | Live DLR POST 2026-08-14 (`id` + `message_status: 2`). Parser: `0`/`2` → delivered |
 | `dlr_callback.provisional.json` | Assumed statistic-shaped DLR (`sent`/`delivered`) — still accepted by parser |
-| `dlr_callback.failed.provisional.json` | Assumed failed DLR (`status=failed`) until a live failed capture |
+| `dlr_callback.failed.json` | Same live shape, `message_status: 3` (vendor letter 2026-08-19, not a live failed capture). Parser: `1`/`3` → failed |
 | `mo_callback.provisional.json` | Assumed MO body (statistic incoming row) until live capture |
 
 Replace `*_callback.provisional.json` with live captures (redact secrets/MSISDN) when a DLR/MO hits ingress. Send response is captured. Capture path: Admin → Callbacks (raw body) after registering dlr/hook URL. See [GAPS.md](../GAPS.md). GET query and `application/x-www-form-urlencoded` are also accepted by the parser.

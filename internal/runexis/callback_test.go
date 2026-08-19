@@ -1,6 +1,7 @@
 package runexis
 
 import (
+	"strconv"
 	"testing"
 )
 
@@ -24,7 +25,7 @@ func TestParseLiveDLRCallback(t *testing.T) {
 	if row.SMSID != "0ca3c3ed-97f1-11f1-a65b-000c296c1599" {
 		t.Fatalf("sms_id %+v", row)
 	}
-	if !row.Sent || row.Delivered || row.Failed {
+	if !row.Sent || !row.Delivered || row.Failed {
 		t.Fatalf("status flags %+v", row)
 	}
 	if row.Status != "2" {
@@ -32,16 +33,40 @@ func TestParseLiveDLRCallback(t *testing.T) {
 	}
 }
 
-func TestParseMessageStatusUnknownIsNotSent(t *testing.T) {
-	rows := ParseCallbacks("", "application/json", []byte(`{"id":"abc","message_status":7}`))
-	if len(rows) != 1 || rows[0].Sent || rows[0].Delivered || rows[0].Failed || rows[0].Status != "7" {
+func TestParseMessageStatusVendorEnum(t *testing.T) {
+	tests := []struct {
+		code                    int
+		sent, delivered, failed bool
+	}{
+		{0, true, true, false},
+		{1, false, false, true},
+		{2, true, true, false},
+		{3, false, false, true},
+		{7, false, false, false},
+	}
+	for _, tc := range tests {
+		body := []byte(`{"id":"abc","message_status":` + strconv.Itoa(tc.code) + `}`)
+		rows := ParseCallbacks("", "application/json", body)
+		if len(rows) != 1 {
+			t.Fatalf("code %d rows=%d", tc.code, len(rows))
+		}
+		row := rows[0]
+		if row.Sent != tc.sent || row.Delivered != tc.delivered || row.Failed != tc.failed || row.Status != strconv.Itoa(tc.code) {
+			t.Fatalf("code %d %+v", tc.code, row)
+		}
+	}
+}
+
+func TestParseMessageStatusOverridesDeliveredBool(t *testing.T) {
+	rows := ParseCallbacks("", "application/json", []byte(`{"id":"abc","delivered":true,"message_status":3}`))
+	if len(rows) != 1 || !rows[0].Failed || rows[0].Delivered || rows[0].Status != "3" {
 		t.Fatalf("%+v", rows)
 	}
 }
 
 func TestParseDLRFailedFixture(t *testing.T) {
-	rows := ParseCallbacks("", "application/json", fixture(t, "dlr_callback.failed.provisional.json"))
-	if len(rows) != 1 || !rows[0].Failed || rows[0].Delivered {
+	rows := ParseCallbacks("", "application/json", fixture(t, "dlr_callback.failed.json"))
+	if len(rows) != 1 || !rows[0].Failed || rows[0].Delivered || rows[0].Status != "3" {
 		t.Fatalf("%+v", rows)
 	}
 }

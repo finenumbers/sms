@@ -80,12 +80,12 @@ Provisional DLR/MO/send-response fixtures stay until a **live** DIDAPI callback 
 2. `callback_base_url` = `https://api.{fqdn}` → register dlr-url / hook-url.
 3. Send a real SMS (LK or `/v1`) and, if possible, trigger an inbound MO.
 4. Admin → Callbacks: open the raw event, redact secrets/MSISDN.
-5. Replace `fixtures/dlr_callback.provisional.json`, `dlr_callback.failed.provisional.json`, `mo_callback.provisional.json` with the captured envelope. Rename without `.provisional`. Send response is captured: [`fixtures/sms_send_response.json`](fixtures/sms_send_response.json). Live DLR success body: [`fixtures/dlr_callback.json`](fixtures/dlr_callback.json). Failed DLR and MO still provisional.
+5. Replace `fixtures/dlr_callback.provisional.json`, `mo_callback.provisional.json` with the captured envelope. Rename without `.provisional`. Send response is captured: [`fixtures/sms_send_response.json`](fixtures/sms_send_response.json). Live DLR success: [`fixtures/dlr_callback.json`](fixtures/dlr_callback.json). Failed DLR shape: [`fixtures/dlr_callback.failed.json`](fixtures/dlr_callback.failed.json) (vendor letter 2026-08-19, same fields, `message_status: 3` — replace with a live failed capture when one arrives). MO still provisional.
 6. Tighten [`internal/ingress`](../../../internal/ingress/ingress.go) and send-response parser against those files; update this table.
 
-Until that happens, send goes through outbox + statistic; DLR/inbox is best-effort on the provisional parser.
+Until MO is captured live, inbox is best-effort on the provisional parser. DLR success/fail mapping follows the vendor enum (2026-08-19).
 
-Live DLR 2026-08-14 uses `id` + `message_status` (not statistic `sent`/`delivered`). `dlvrd` was empty while statistic later had `delivered=true`. Parser maps only `message_status=2` → `sent`; `delivered` remains statistic until support confirms the enum (ticket sent 2026-08-14, reply expected Monday). Other codes are stored as `provider_status` and do not change SMS status. `UpdateSmsMessageFromStatistic` no longer forces `accepted` when both flags are false.
+Live DLR uses `id` + `message_status` (not statistic `sent`/`delivered`). Support 2026-08-19: report is final; `0`/`2` → delivered, `1`/`3` → failed; match on `id` not `jmx_id`; `dlvrd`/`sub` currently unfilled (do not map). Other codes are stored as `provider_status` and do not change SMS status. Statistic reconcile remains a backup if DLR is lost. `UpdateSmsMessageFromStatistic` no longer forces `accepted` when both flags are false.
 
 ## Minor / hygiene
 
@@ -103,7 +103,7 @@ Live DLR 2026-08-14 uses `id` + `message_status` (not statistic `sent`/`delivere
 
 | Gap | Status | Resolved in |
 |---|---|---|
-| DLR payload | live success captured; failed still provisional | Live 2026-08-14: `fixtures/dlr_callback.json` (`id`, `message_status: 2`). Parser: `2` → sent. Delivered via statistic until vendor enum. Failed fixture still provisional |
+| DLR payload | live success captured; failed shape from vendor letter | Live 2026-08-14: `fixtures/dlr_callback.json`. Support 2026-08-19: `0`/`2` → delivered, `1`/`3` → failed. Failed fixture `dlr_callback.failed.json` (`message_status: 3`, not a live capture) |
 | MO payload | provisional — statistic field names | Wave 9: `fixtures/mo_callback.provisional.json`; parser + worker. Replace with live capture |
 | Send request vs HTML | resolved | HTML `to_number` number is wrong; wire is JSON string (support 2026-08-14). See `TestMarshalSendToNumberStringContract` |
 | Send response | resolved | Live 2026-08-14: `{success, data:{id, pdu}}`. Fixture `sms_send_response.json`. Parser already reads `data.id` |

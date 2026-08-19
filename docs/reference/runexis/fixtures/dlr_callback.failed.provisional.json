@@ -1,8 +1,0 @@
-{
-  "sms_id": "8ace264b-a78e-488e-b411-af2581bd3f23",
-  "sender_number": "79991234567",
-  "receiver_number": "79876543210",
-  "sent": false,
-  "delivered": false,
-  "status": "failed"
-}

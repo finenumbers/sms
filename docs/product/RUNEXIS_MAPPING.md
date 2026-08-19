@@ -53,7 +53,7 @@ flowchart LR
 | Product feature | Our responsibility | Runexis DIDAPI |
 |---|---|---|
 | Send SMS | validate client owns `from_msisdn`; write `SmsMessage`; call provider | `POST /api/v1/sms/send` `{from_number, to_number, text}` — `to_number` JSON string; live 200 `{data:{id, pdu}}` |
-| Delivery confirmations | DLR `id` + `message_status`; `2` → sent; delivered via statistic until vendor enum | Live `dlr_callback.json`; `GET /api/v1/sms/statistic` |
+| Delivery confirmations | DLR `id` + `message_status`; `0`/`2` → delivered, `1`/`3` → failed; statistic as backup | Live `dlr_callback.json`; `GET /api/v1/sms/statistic` |
 | Receive SMS (inbox) | persist MO via ingress; list in LK | MO callback URL (**payload gap**); statistic with `incoming=true` as backfill |
 | Message history | query `SmsMessage` (primary), statistic as reconciliation | `/api/v1/sms/statistic` |
 | Group SMS campaign | `SmsCampaign` + worker fan-out | N × `/api/v1/sms/send` (no bulk API) |

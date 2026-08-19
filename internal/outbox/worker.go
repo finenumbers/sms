@@ -284,6 +284,19 @@ func (w *Worker) acceptFromStat(ctx context.Context, job sqlcdb.SendJob, msg sql
 		w.park(ctx, job, sqlcdb.SendJobStatusUncertain, job.Attempt, needStat, uncertainPause)
 		return
 	}
+	// Statistic match means the provider accepted. Flags may both be false;
+	// markAccepted only upgrades queued|accepted and is a no-op on sent/delivered.
+	var pid *string
+	if row.SMSID != "" {
+		pid = &row.SMSID
+	}
+	if err := markAccepted(ctx, w.store.Queries, msg.ID, pid); err != nil {
+		if w.log != nil {
+			w.log.Error("accept from statistic", "id", msg.ID, "err", err)
+		}
+		w.park(ctx, job, sqlcdb.SendJobStatusUncertain, job.Attempt, needStat, uncertainPause)
+		return
+	}
 	w.capture(ctx, msg.ID)
 	w.complete(ctx, job)
 }

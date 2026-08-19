@@ -162,7 +162,7 @@ export function CampaignDetailPage() {
           </>
         )}
         <p className="mt-2 text-sm text-zinc-600">
-          всего {c.total_count} · принято {c.accepted_count} · доставлено {c.delivered_count} · ошибки {c.failed_count}
+          всего {c.total_count} · принято {c.accepted_count} · доставлено {c.delivered_count} · ошибки {c.failed_count + (c.recipients?.failed ?? 0)}
         </p>
         {estimate.data ? (
           <p className="mt-2 text-xs text-zinc-500">

@@ -304,6 +304,139 @@ export async function downloadAdminFile(path: string, filename: string): Promise
   URL.revokeObjectURL(href);
 }
 
+export type SmsPage<T> = { items: T[]; has_more: boolean; next_cursor?: string };
+
+export type SmsCampaignRow = {
+  id: string;
+  client_id: string;
+  client_name: string;
+  from: string;
+  text_preview: string;
+  status: string;
+  total_count: number;
+  accepted_count: number;
+  delivered_count: number;
+  failed_count: number;
+  created_at: string;
+};
+
+export type SmsCampaignDetail = SmsCampaignRow & {
+  text: string;
+  created_by?: string;
+  created_by_email?: string;
+  updated_at: string;
+  counters_note?: string;
+};
+
+export type SmsCampaignSummary = {
+  total: number;
+  pending: number;
+  enqueued: number;
+  skipped: number;
+  failed: number;
+};
+
+export type SmsCampaignBilling = {
+  captured: string;
+  held: string;
+  released: string;
+  currency?: string;
+};
+
+export type SmsRecipient = {
+  id: string;
+  to: string;
+  status: string;
+  created_at: string;
+  message_id?: string;
+  message_status?: string;
+  provider_sms_id?: string;
+  provider_status?: string;
+  billed_segments?: number;
+  billed_amount?: string;
+  currency?: string;
+  billing_action?: string;
+  billing_state: string;
+  last_error?: string;
+};
+
+export type SmsMessageRow = {
+  id: string;
+  client_id?: string;
+  client_name?: string;
+  direction: string;
+  from: string;
+  to: string;
+  text_preview: string;
+  status: string;
+  provider_status?: string;
+  billed_segments?: number;
+  billed_amount?: string;
+  currency?: string;
+  billing_action?: string;
+  billing_state: string;
+  campaign_id?: string;
+  created_at: string;
+};
+
+export type SmsMessageDetail = {
+  id: string;
+  client_id?: string;
+  client_name?: string;
+  direction: string;
+  from: string;
+  to: string;
+  text: string;
+  status: string;
+  provider: string;
+  provider_sms_id?: string;
+  provider_status?: string;
+  pdu_count?: number;
+  campaign_id?: string;
+  idempotency_key?: string;
+  created_at: string;
+  accepted_at?: string;
+  sent_at?: string;
+  delivered_at?: string;
+  failed_at?: string;
+  unit_sell_price?: string;
+  billed_segments?: number;
+  billed_amount?: string;
+  tariff_plan_id?: string;
+  tariff_plan_code?: string;
+  currency?: string;
+  billing_action?: string;
+  billing_state: string;
+  send_job?: {
+    id: string;
+    status: string;
+    attempt: number;
+    available_at: string;
+    locked_at?: string;
+    locked_by?: string;
+    last_error?: string;
+    created_at: string;
+    updated_at: string;
+  };
+  attempts: {
+    id: string;
+    attempt: number;
+    request_meta?: unknown;
+    http_status?: number;
+    response_body?: string;
+    latency_ms?: number;
+    error_kind?: string;
+    created_at: string;
+  }[];
+  callbacks: {
+    id: string;
+    kind: string;
+    created_at: string;
+    processed_at?: string;
+    parsed?: unknown;
+  }[];
+};
+
 export async function probeSMSCConnectivity(): Promise<SMSCConnectivity> {
   const res = await fetch("/admin/v1/provider/smsc/connectivity-test", {
     method: "POST",

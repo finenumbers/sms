@@ -48,7 +48,7 @@ export function JobsPage() {
 
   return (
     <div>
-      <PageHeader title="Задания" />
+      <PageHeader title="Задачи HLR" />
       <p className="mb-3 text-sm text-zinc-500">Проверки HLR и Silent SMS по всем клиентам.</p>
       <div className="mb-3 grid gap-3 md:grid-cols-3">
         <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
@@ -123,7 +123,7 @@ export function JobsPage() {
         </tbody>
       </Table>
       <InfiniteSentinel disabled={!list.hasNextPage || list.isFetchingNextPage} onVisible={() => void list.fetchNextPage()} />
-      {!list.isLoading && items.length === 0 ? <EmptyState>Заданий нет</EmptyState> : null}
+      {!list.isLoading && items.length === 0 ? <EmptyState>Задач HLR нет</EmptyState> : null}
     </div>
   );
 }

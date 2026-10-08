@@ -15,6 +15,9 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { TariffsPage } from "./pages/TariffsPage";
 import { JobsPage } from "./pages/JobsPage";
 import { JobDetailPage } from "./pages/JobDetailPage";
+import { SmsCampaignDetailPage } from "./pages/SmsCampaignDetailPage";
+import { SmsJobsPage } from "./pages/SmsJobsPage";
+import { SmsMessageDetailPage } from "./pages/SmsMessageDetailPage";
 import { MonitoringPage } from "./pages/MonitoringPage";
 
 const queryClient = new QueryClient({
@@ -62,7 +65,8 @@ function Layout({ children }: { children: ReactNode }) {
       nav={[
         { to: "/", label: "Обзор" },
         { to: "/clients", label: "Клиенты" },
-        { to: "/jobs", label: "Задания" },
+        { to: "/jobs", label: "Задачи HLR" },
+        { to: "/sms-jobs", label: "Задачи SMS" },
         { to: "/billing", label: "Биллинг" },
         { to: "/tariffs", label: "Тарифы" },
         { to: "/monitoring", label: "Мониторинг" },
@@ -94,6 +98,9 @@ export function App() {
                     <Route path="/clients/:id" element={<ClientDetailPage />} />
                     <Route path="/jobs" element={<JobsPage />} />
                     <Route path="/jobs/:id" element={<JobDetailPage />} />
+                    <Route path="/sms-jobs" element={<SmsJobsPage />} />
+                    <Route path="/sms-jobs/campaigns/:id" element={<SmsCampaignDetailPage />} />
+                    <Route path="/sms-jobs/messages/:id" element={<SmsMessageDetailPage />} />
                     <Route path="/billing" element={<BillingPage />} />
                     <Route path="/tariffs" element={<TariffsPage />} />
                     <Route path="/monitoring" element={<MonitoringPage />} />

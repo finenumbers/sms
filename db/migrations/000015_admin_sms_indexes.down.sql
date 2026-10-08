@@ -1,0 +1,10 @@
+DROP INDEX IF EXISTS provider_callback_events_sms_message_idx;
+DROP INDEX IF EXISTS sms_messages_failed_created_idx;
+DROP INDEX IF EXISTS sms_messages_outbound_inflight_idx;
+DROP INDEX IF EXISTS sms_messages_direct_outbound_idx;
+DROP INDEX IF EXISTS sms_messages_inbound_created_idx;
+DROP INDEX IF EXISTS sms_messages_to_created_idx;
+DROP INDEX IF EXISTS sms_messages_from_created_idx;
+DROP INDEX IF EXISTS campaign_recipients_campaign_created_idx;
+DROP INDEX IF EXISTS sms_campaigns_from_created_idx;
+DROP INDEX IF EXISTS sms_campaigns_created_idx;

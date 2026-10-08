@@ -23,6 +23,14 @@ PostgreSQL 16. UUID PK, `timestamptz` UTC. Текст SMS — ПДн: тольк
 
 - `sms_messages (client_id, created_at DESC)`
 - `sms_messages (client_id, direction, created_at DESC)`
+- `sms_messages (from_msisdn, created_at DESC, id DESC)` / `(to_msisdn, created_at DESC, id DESC)` — точный поиск в админке
+- `sms_messages (created_at DESC, id DESC)` WHERE `direction = inbound`
+- `sms_messages (created_at DESC, id DESC)` WHERE outbound и `campaign_id IS NULL`
+- `sms_messages (created_at DESC, id DESC)` WHERE outbound и статус `queued|accepted|sent`
+- `sms_messages (direction, created_at DESC, id DESC)` WHERE `status = failed`
+- `sms_campaigns (created_at DESC, id DESC)` / `(from_msisdn, created_at DESC, id DESC)`
+- `campaign_recipients (campaign_id, created_at, id)`
+- `provider_callback_events (sms_message_id, created_at DESC)` WHERE `sms_message_id IS NOT NULL`
 - `send_jobs (available_at)` WHERE status IN (`pending`, `retry`, `uncertain`)
 - `campaign_recipients (campaign_id, status)`
 - `ops_events (created_at DESC)` / `(category, created_at DESC)`

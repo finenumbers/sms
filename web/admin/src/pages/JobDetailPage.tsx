@@ -82,7 +82,7 @@ export function JobDetailPage() {
             </Button>
             {inflight ? (
               <Button type="button" variant="secondary" disabled={finalize.isPending} onClick={() => finalize.mutate()}>
-                Закрыть задание
+                Закрыть задачу
               </Button>
             ) : null}
           </div>
@@ -125,12 +125,12 @@ export function JobDetailPage() {
       {j.error_message ? <Alert className="mb-4">{j.error_message}</Alert> : null}
       {finalize.isSuccess && lookupInflight(finalize.data.status) ? (
         <Alert className="mb-4" tone="amber">
-          Задание ещё не закрыто: есть незавершённые номера.
+          Задача ещё не закрыта: есть незавершённые номера.
         </Alert>
       ) : null}
       {finalize.isSuccess && !lookupInflight(finalize.data.status) ? (
         <Alert className="mb-4" tone="green">
-          Задание закрыто
+          Задача закрыта
         </Alert>
       ) : null}
       {finalize.isError ? (

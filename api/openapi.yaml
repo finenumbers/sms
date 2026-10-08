@@ -1795,6 +1795,114 @@ paths:
       responses:
         "200":
           description: No-op if any item is non-terminal
+  /admin/v1/sms/campaigns:
+    get:
+      tags: [admin]
+      operationId: adminSMSListCampaigns
+      security: [{adminCookie: []}]
+      parameters:
+        - name: client_id
+          in: query
+          schema: {type: string, format: uuid}
+        - name: status
+          in: query
+          schema: {type: string, enum: [draft, queued, running, completed, failed, cancelled]}
+        - name: from
+          in: query
+          description: Exact sender MSISDN
+          schema: {type: string}
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Campaign page. has_more, no total. Text is a preview.
+  /admin/v1/sms/campaigns/{campaignID}:
+    get:
+      tags: [admin]
+      operationId: adminSMSGetCampaign
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Campaign row. Counters may lag the worker.
+  /admin/v1/sms/campaigns/{campaignID}/summary:
+    get:
+      tags: [admin]
+      operationId: adminSMSCampaignSummary
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Live recipient status counts for one campaign
+  /admin/v1/sms/campaigns/{campaignID}/billing:
+    get:
+      tags: [admin]
+      operationId: adminSMSCampaignBilling
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+      responses:
+        "200":
+          description: Tariff snapshot sums for one campaign. Not polled.
+  /admin/v1/sms/campaigns/{campaignID}/recipients:
+    get:
+      tags: [admin]
+      operationId: adminSMSListRecipients
+      security: [{adminCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CampaignID"
+        - name: cursor
+          in: query
+          schema: {type: string}
+      responses:
+        "200":
+          description: One recipient page ordered by created_at, id
+  /admin/v1/sms/messages:
+    get:
+      tags: [admin]
+      operationId: adminSMSListMessages
+      security: [{adminCookie: []}]
+      parameters:
+        - name: direction
+          in: query
+          required: true
+          schema: {type: string, enum: [outbound, inbound]}
+        - name: client_id
+          in: query
+          schema: {type: string, format: uuid}
+        - name: status
+          in: query
+          schema: {type: string, enum: [queued, accepted, sent, delivered, failed]}
+        - name: source
+          in: query
+          schema: {type: string, enum: [direct, campaign]}
+        - name: msisdn
+          in: query
+          description: Exact from or to. Mutually exclusive with provider_sms_id.
+          schema: {type: string}
+        - name: provider_sms_id
+          in: query
+          schema: {type: string}
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: Message page. has_more, no total. Text is a preview.
+  /admin/v1/sms/messages/{messageID}:
+    get:
+      tags: [admin]
+      operationId: adminSMSGetMessage
+      security: [{adminCookie: []}]
+      parameters:
+        - name: messageID
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Message, send job, redacted attempts, parsed callbacks
   /admin/v1/lookups/monitoring:
     get:
       tags: [admin]

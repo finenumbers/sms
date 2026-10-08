@@ -447,7 +447,11 @@ export function ClientDetailPage() {
           </div>
           <p className="mb-3 text-xs">
             <Link className="text-blue-700 hover:underline" to={`/jobs?client_id=${id}`}>
-              Задания клиента
+              Задачи HLR клиента
+            </Link>
+            {" · "}
+            <Link className="text-blue-700 hover:underline" to={`/sms-jobs?client_id=${id}`}>
+              Задачи SMS клиента
             </Link>
           </p>
           {assign.isError ? <ErrorBox error={assign.error} /> : null}

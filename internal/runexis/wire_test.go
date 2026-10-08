@@ -281,6 +281,54 @@ func TestRefreshPersistsNewRefreshToken(t *testing.T) {
 	}
 }
 
+func TestParseSMSSettingsFixture(t *testing.T) {
+	env, err := decodeEnvelope(fixture(t, "sms_settings_response.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := parseSMSSettings(env.Data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.HookURL != "http://www.mcclure.com/sms-handler" || !got.In || !got.DomOut || got.IntOut {
+		t.Fatalf("%+v", got)
+	}
+}
+
+func TestClientSMSSettings(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/v1/login":
+			w.Write(fixture(t, "auth_login_response.json"))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/sms/settings":
+			if r.Header.Get("Content-Type") != "" {
+				t.Errorf("GET settings must not send Content-Type, got %q", r.Header.Get("Content-Type"))
+			}
+			if !strings.HasPrefix(r.Header.Get("Authorization"), "Bearer ") {
+				t.Error("missing Bearer")
+			}
+			w.Write(fixture(t, "sms_settings_response.json"))
+		default:
+			t.Errorf("unexpected %s %s", r.Method, r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := New(Options{
+		BaseURL:    srv.URL,
+		HTTPClient: srv.Client(),
+		Creds:      staticCreds{email: "a@b.c", password: "x"},
+		Now:        func() time.Time { return time.Date(2025, 7, 1, 0, 0, 0, 0, time.UTC) },
+	})
+	got, err := c.SMSSettings(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.HookURL == "" || !got.In {
+		t.Fatalf("%+v", got)
+	}
+}
+
 func TestMarshalStatisticFlatAndUTC(t *testing.T) {
 	raw, err := marshalStatistic(StatisticQuery{
 		From:          time.Date(2025, 12, 1, 0, 0, 0, 0, time.UTC),

@@ -1,0 +1,20 @@
+---
+description: Эталон Runexis DIDAPI для SMS — всегда читать живую документацию
+alwaysApply: true
+---
+
+# Runexis DIDAPI — эталон для SMS
+
+Перед любой работой с отправкой, получением или рассылкой SMS заново открыть
+https://didapi.runexis.ru/docs/index.html (WebFetch). Не опираться на прошлый
+сеанс: сайт может измениться.
+
+- Следовать актуальным путям, методам, полям и примерам с сайта.
+- Не выдумывать bulk-эндпоинт, если в живой доке его нет. Рассылка = N вызовов
+  `POST /api/v1/sms/send` через наш job runner (продуктовое решение, не вендорский bulk API).
+- Локальные файлы (`docs/vendor/runexis/`, `docs/reference/runexis/`, фикстуры) —
+  вторичны. При расхождении побеждает живая документация.
+- Если живая дока не описывает контракт (типично: тело DLR/MO callback), не
+  угадывать по HTML. Использовать live-фикстуры и `docs/reference/runexis/GAPS.md`.
+- Auth DIDAPI (`Authorization: Bearer`, `/api/v1/login`, `/api/v1/refresh`) тоже
+  сверять с живой докой, не с памятью.

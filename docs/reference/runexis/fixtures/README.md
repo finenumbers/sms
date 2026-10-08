@@ -7,8 +7,9 @@ Source of truth for `internal/runexis` marshalers. No real credentials or produc
 | `auth_login_*.json` | Vendor HTML example (`POST /api/v1/login`) |
 | `auth_refresh_*.json` | Vendor HTML example (`POST /api/v1/refresh`) |
 | `auth_me_response.json` | Vendor HTML example (`GET /api/v1/me`) |
-| `sms_send_request.json` | Live DIDAPI contract (support 2026-08-14). `to_number` is a JSON **string**; HTML documents `number` and is wrong |
-| `sms_send_response.json` | Live 2026-08-14 `POST /sms/send` 200: `data.id` + `data.pdu` (not `sms_id`) |
+| `sms_send_request.json` | Live DIDAPI + живая дока 2026-10-08: `to_number` JSON **string** |
+| `sms_send_response.json` | Live 2026-08-14 и живая дока 2026-10-08: `POST /sms/send` 200 `data.id` + `data.pdu` |
+| `sms_settings_response.json` | Vendor HTML / живая дока (`GET /api/v1/sms/settings`) |
 | `sms_send_response.empty.json` | HTML gap: success with empty `data` |
 | `sms_statistic_request.json` | What **we** send: flat `string[]` (Scribe nested `[[...]]` is an artifact) |
 | `sms_statistic_response.json` | Vendor HTML example |

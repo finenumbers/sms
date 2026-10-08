@@ -57,9 +57,19 @@ export function SettingsPage() {
   });
   const test = useMutation({
     mutationFn: () =>
-      api.post<{ ok: boolean; email: string; name: string; statistic_ok: boolean; statistic_error?: string }>(
-        "/settings/runexis/test",
-      ),
+      api.post<{
+        ok: boolean;
+        email: string;
+        name: string;
+        statistic_ok: boolean;
+        statistic_error?: string;
+        settings_ok?: boolean;
+        settings_error?: string;
+        hook_url?: string;
+        in?: boolean;
+        dom_out?: boolean;
+        int_out?: boolean;
+      }>("/settings/runexis/test"),
   });
   const register = useMutation({
     mutationFn: () => api.post<{ ok: boolean; dlr_url: string; hook_url: string }>("/settings/runexis/callbacks", { ingress_token: token }),
@@ -125,6 +135,10 @@ export function SettingsPage() {
             Portainer. <code>localhost</code> Runexis не достучится: исходящие тогда остаются accepted, пока statistic (~2
             мин) не подтвердит доставку.
           </p>
+          <p className="mb-2 text-xs text-zinc-500">
+            Эти флаги уходят на номер через PATCH …/sms/directions. Глобальные in/dom_out/int_out аккаунта Runexis
+            (GET /sms/settings, без in_mass и без dlr_url) видны после «Проверить обмен».
+          </p>
           <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
             {(
               [
@@ -182,6 +196,9 @@ export function SettingsPage() {
                 OK · {test.data.email}
                 {test.data.name ? ` · ${test.data.name}` : ""}
                 {test.data.statistic_ok ? " · statistic в порядке" : ` · ошибка statistic: ${test.data.statistic_error ?? "ошибка"}`}
+                {test.data.settings_ok
+                  ? ` · settings аккаунта Runexis: hook_url=${test.data.hook_url || "—"} · in=${String(test.data.in)} · dom_out=${String(test.data.dom_out)} · int_out=${String(test.data.int_out)}`
+                  : ` · ошибка settings: ${test.data.settings_error ?? "ошибка"}`}
               </Alert>
             </div>
           ) : null}

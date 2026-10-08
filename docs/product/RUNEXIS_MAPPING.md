@@ -25,7 +25,7 @@ flowchart LR
 | Store agent credentials | `SystemSettings` (secret store) | `POST /api/v1/login`, `POST /api/v1/refresh` |
 | Keep session alive | token cache + refresh before expiry | `/login`, `/refresh`, optional `/revoke-all` |
 | Register global SMS callbacks | public ingress URLs in Settings | `PATCH /api/v1/sms/dlr-url`, `PATCH /api/v1/sms/hook-url` |
-| Read global SMS settings | admin diagnostics | `GET /api/v1/sms/settings` |
+| Read global SMS settings | admin «Проверить обмен»: `/me` + statistic + settings | `GET /api/v1/me`, `GET /api/v1/sms/statistic`, `GET /api/v1/sms/settings` (`hook_url`, `in`, `dom_out`, `int_out`; **нет** `dlr_url`) |
 | Client API keys | `ApiCredential` in our DB | none (our auth) |
 
 ## Admin — Clients

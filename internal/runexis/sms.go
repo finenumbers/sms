@@ -85,3 +85,14 @@ func (c *Client) Statistic(ctx context.Context, q StatisticQuery) (StatisticPage
 	}
 	return out, nil
 }
+
+func (c *Client) SMSSettings(ctx context.Context) (SMSSettings, error) {
+	var env wireEnvelope
+	if _, err := c.doJSON(ctx, http.MethodGet, "/api/v1/sms/settings", nil, true, &env); err != nil {
+		return SMSSettings{}, err
+	}
+	if !env.Success {
+		return SMSSettings{}, envelopeError(0, env)
+	}
+	return parseSMSSettings(env.Data)
+}

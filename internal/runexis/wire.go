@@ -72,6 +72,13 @@ type StatisticRow struct {
 	Delivered      bool
 }
 
+type SMSSettings struct {
+	HookURL string
+	In      bool
+	DomOut  bool
+	IntOut  bool
+}
+
 type APIError struct {
 	Status    int
 	Code      int
@@ -160,6 +167,25 @@ type wireStatisticMeta struct {
 	Total int `json:"total"`
 	Page  int `json:"page"`
 	Limit int `json:"limit"`
+}
+
+type wireSMSSettings struct {
+	HookURL string `json:"hook_url"`
+	In      bool   `json:"in"`
+	DomOut  bool   `json:"dom_out"`
+	IntOut  bool   `json:"int_out"`
+}
+
+func parseSMSSettings(data json.RawMessage) (SMSSettings, error) {
+	trim := bytes.TrimSpace(data)
+	if len(trim) == 0 || bytes.Equal(trim, []byte("null")) {
+		return SMSSettings{}, nil
+	}
+	var d wireSMSSettings
+	if err := json.Unmarshal(trim, &d); err != nil {
+		return SMSSettings{}, fmt.Errorf("sms settings data: %w", err)
+	}
+	return SMSSettings{HookURL: d.HookURL, In: d.In, DomOut: d.DomOut, IntOut: d.IntOut}, nil
 }
 
 func marshalSend(in SendInput) ([]byte, error) {

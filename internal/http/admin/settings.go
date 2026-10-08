@@ -202,6 +202,21 @@ func (h *Handlers) TestRunexis(w http.ResponseWriter, r *http.Request) {
 	} else {
 		out["statistic_ok"] = true
 	}
+	out["settings_ok"] = false
+	if st, err := h.Runexis.SMSSettings(r.Context()); err != nil {
+		msg := err.Error()
+		var apiErr *runexis.APIError
+		if errors.As(err, &apiErr) && apiErr.Message != "" {
+			msg = apiErr.Message
+		}
+		out["settings_error"] = msg
+	} else {
+		out["settings_ok"] = true
+		out["hook_url"] = st.HookURL
+		out["in"] = st.In
+		out["dom_out"] = st.DomOut
+		out["int_out"] = st.IntOut
+	}
 	h.Audit.Write(r.Context(), audit.Event{
 		ActorType:    sqlcdb.ActorTypeAdmin,
 		ActorID:      p.AdminUserID,
@@ -209,7 +224,7 @@ func (h *Handlers) TestRunexis(w http.ResponseWriter, r *http.Request) {
 		ResourceType: "system_settings",
 		IP:           httpx.ClientIP(r),
 		UserAgent:    httpx.UserAgent(r),
-		Metadata:     map[string]any{"runexis_email": acc.Email, "statistic_ok": out["statistic_ok"]},
+		Metadata:     map[string]any{"runexis_email": acc.Email, "statistic_ok": out["statistic_ok"], "settings_ok": out["settings_ok"]},
 	})
 	httpx.WriteJSON(w, http.StatusOK, out)
 }

@@ -34,9 +34,9 @@ No payload example for the message body delivered to our handler.
 
 **Action:** same as DLR — confirm contract + store fixtures.
 
-### 3. `POST /api/v1/sms/send` response — captured
+### 3. `POST /api/v1/sms/send` response — captured (also in live HTML 2026-10-08)
 
-HTML still has no example. Live 2026-08-14 (string `to_number`):
+Живая дока и live 2026-08-14 (string `to_number`):
 
 ```json
 {
@@ -91,7 +91,7 @@ Live DLR uses `id` + `message_status` (not statistic `sent`/`delivered`). Suppor
 
 | Item | Note |
 |---|---|
-| `to_number` type | HTML `number` is wrong. Support 2026-08-14: JSON string. Our public API already uses string MSISDN. |
+| `to_number` type | Живая дока (2026-10-08) — JSON string во всех примерах. Support 2026-08-14: integer → HTTP 500. |
 | Statistic via GET + body | `/api/v1/sms/statistic` is GET with JSON body. Live `date` is naive **UTC** (same wall clock as our `created_at` Z). Moscow-shifted `from`/`to` miss rows (2026-08-14: UTC window found `cdd877f7…` delivered; +3h window returned empty). |
 | Dual send channels | `/api/v1/sms/send` (product) vs `/api/v1/numbers/{number}/sim/send-sms` (informational SIM). Do not mix. |
 | DELETE dlr/hook body | Extracted examples sometimes show a `url` body on DELETE; treat as unverified — confirm before relying on it. |
@@ -105,8 +105,8 @@ Live DLR uses `id` + `message_status` (not statistic `sent`/`delivered`). Suppor
 |---|---|---|
 | DLR payload | live success captured; failed shape from vendor letter | Live 2026-08-14: `fixtures/dlr_callback.json`. Support 2026-08-19: `0`/`2` → delivered, `1`/`3` → failed. Failed fixture `dlr_callback.failed.json` (`message_status: 3`, not a live capture) |
 | MO payload | provisional — statistic field names | Wave 9: `fixtures/mo_callback.provisional.json`; parser + worker. Replace with live capture |
-| Send request vs HTML | resolved | HTML `to_number` number is wrong; wire is JSON string (support 2026-08-14). See `TestMarshalSendToNumberStringContract` |
-| Send response | resolved | Live 2026-08-14: `{success, data:{id, pdu}}`. Fixture `sms_send_response.json`. Parser already reads `data.id` |
+| Send request vs HTML | resolved | Живая дока (2026-10-08) — строковый `to_number`. Integer ломал API (support 2026-08-14). See `TestMarshalSendToNumberStringContract` |
+| Send response | resolved | Живая дока (2026-10-08) и live 2026-08-14: `{success, data:{id, pdu}}`. Fixture `sms_send_response.json`. Parser reads `data.id` |
 | Statistic date TZ | resolved | Live `date` is UTC naive, not Moscow. `formatStatisticTime` |
 | Campaign API | accepted as ours | product design |
 | Purchase APIs | out of scope | product design |

@@ -39,6 +39,8 @@ const (
 	bodyTruncateRunes = 2048
 	reconcileAge      = 2 * time.Minute
 	inboxWindow       = 30 * time.Minute
+	inboxStatLimit    = 50
+	inboxStatPages    = 20
 )
 
 type SettingsView interface {
@@ -485,49 +487,70 @@ func (w *Worker) backfillInbox(ctx context.Context) error {
 		return nil
 	}
 	incoming := true
-	page, err := w.rx.Statistic(ctx, runexis.StatisticQuery{
-		From:     w.now().Add(-inboxWindow),
-		To:       w.now().Add(time.Minute),
-		Incoming: &incoming,
-		Page:     1,
-		Limit:    50,
-	})
-	if err != nil {
-		return err
-	}
-	for _, row := range page.Items {
-		if !row.Incoming || row.SMSID == "" {
-			continue
-		}
-		to := msisdn.Canonical(row.ReceiverNumber)
-		from := msisdn.Canonical(row.SenderNumber)
-		if to == "" || from == "" {
-			continue
-		}
-		var clientID *uuid.UUID
-		if asg, err := w.store.Queries.GetOpenAssignmentByMSISDN(ctx, to); err == nil {
-			clientID = &asg.ClientID
-		}
-		text := row.Message
-		var pdu *int32
-		if row.PDU > 0 {
-			v := int32(row.PDU)
-			pdu = &v
-		}
-		sid := row.SMSID
-		_, err := w.store.Queries.InsertInboundMessage(ctx, sqlcdb.InsertInboundMessageParams{
-			ClientID:      clientID,
-			FromMsisdn:    from,
-			ToMsisdn:      to,
-			Text:          text,
-			ProviderSmsID: &sid,
-			PduCount:      pdu,
+	from := w.now().Add(-inboxWindow)
+	to := w.now().Add(time.Minute)
+	for page := 1; page <= inboxStatPages; page++ {
+		pg, err := w.rx.Statistic(ctx, runexis.StatisticQuery{
+			From:     from,
+			To:       to,
+			Incoming: &incoming,
+			Page:     page,
+			Limit:    inboxStatLimit,
 		})
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
-			w.log.Error("inbox backfill", "err", err)
+		if err != nil {
+			return err
+		}
+		for _, row := range pg.Items {
+			if !row.Incoming || row.SMSID == "" {
+				continue
+			}
+			toMSISDN := msisdn.Canonical(row.ReceiverNumber)
+			fromMSISDN := msisdn.Canonical(row.SenderNumber)
+			if toMSISDN == "" || fromMSISDN == "" {
+				continue
+			}
+			var clientID *uuid.UUID
+			if asg, err := w.store.Queries.GetOpenAssignmentByMSISDN(ctx, toMSISDN); err == nil {
+				clientID = &asg.ClientID
+			}
+			text := row.Message
+			var pdu *int32
+			if row.PDU > 0 {
+				v := int32(row.PDU)
+				pdu = &v
+			}
+			sid := row.SMSID
+			_, err := w.store.Queries.InsertInboundMessage(ctx, sqlcdb.InsertInboundMessageParams{
+				ClientID:      clientID,
+				FromMsisdn:    fromMSISDN,
+				ToMsisdn:      toMSISDN,
+				Text:          text,
+				ProviderSmsID: &sid,
+				PduCount:      pdu,
+			})
+			if err != nil && !errors.Is(err, pgx.ErrNoRows) && w.log != nil {
+				w.log.Error("inbox backfill", "err", err)
+			}
+		}
+		more, truncated := nextInboxStatisticPage(len(pg.Items), inboxStatLimit, page, inboxStatPages)
+		if truncated && w.log != nil {
+			w.log.Warn("inbox_backfill_truncated", "page", page, "limit", inboxStatLimit, "meta_total", pg.Total)
+		}
+		if !more {
+			break
 		}
 	}
 	return nil
+}
+
+func nextInboxStatisticPage(n, limit, page, capPages int) (more, truncated bool) {
+	if n < limit {
+		return false, false
+	}
+	if page >= capPages {
+		return false, true
+	}
+	return true, false
 }
 
 func applyStatistic(ctx context.Context, q *sqlcdb.Queries, id uuid.UUID, row runexis.StatisticRow) error {

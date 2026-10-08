@@ -1,7 +1,10 @@
 # Runexis DIDAPI — Overview
 
-Source of truth (immutable vendor archive):
-[`docs/vendor/runexis/DIDAPI Documentation.html`](../../vendor/runexis/DIDAPI%20Documentation.html)
+**Эталон:** [https://didapi.runexis.ru/docs/index.html](https://didapi.runexis.ru/docs/index.html)
+(живая документация, может меняться).
+
+Локальный HTML ([`docs/vendor/runexis/DIDAPI Documentation.html`](../../vendor/runexis/DIDAPI%20Documentation.html))
+и выжимки из `extract_runexis_docs.py` — снимок для офлайна и навигации, не источник истины.
 
 ## Base URL
 
@@ -63,7 +66,9 @@ Error responses (4XX / 500):
 | [GAPS.md](GAPS.md) | Missing contracts that block implementation |
 | [ENDPOINTS.json](ENDPOINTS.json) | Machine-readable catalog (all sections) |
 
-## Regenerating
+## Regenerating the offline snapshot
+
+Обновляет локальные выжимки из vendor HTML. Эталон по-прежнему живая документация.
 
 ```bash
 python3 scripts/extract_runexis_docs.py

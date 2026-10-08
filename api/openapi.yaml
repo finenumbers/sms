@@ -608,7 +608,24 @@ paths:
         - $ref: "#/components/parameters/CSRF"
       responses:
         "200":
-          description: Login + /me succeeded
+          description: Login + /me succeeded. statistic_ok / settings_ok are extra probes and do not change this status.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, email, name, statistic_ok]
+                properties:
+                  ok: {type: boolean}
+                  email: {type: string}
+                  name: {type: string}
+                  statistic_ok: {type: boolean}
+                  statistic_error: {type: string}
+                  settings_ok: {type: boolean}
+                  settings_error: {type: string}
+                  hook_url: {type: string, description: Global MO hook from GET /sms/settings (no dlr_url in DIDAPI)}
+                  in: {type: boolean}
+                  dom_out: {type: boolean}
+                  int_out: {type: boolean}
         "409":
           description: Credentials missing or cannot be decrypted
         "502":
